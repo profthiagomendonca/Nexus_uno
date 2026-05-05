@@ -1,0 +1,11 @@
+[gd_resource type="Theme" load_steps=2 format=3]
+
+[ext_resource type="StyleBox" path="res://resources/GlassStyleBox.tres" id="1_g3k4l"]
+
+[resource]
+Button/styles/disabled = ExtResource("1_g3k4l")
+Button/styles/focus = ExtResource("1_g3k4l")
+Button/styles/hover = ExtResource("1_g3k4l")
+Button/styles/normal = ExtResource("1_g3k4l")
+Button/styles/pressed = ExtResource("1_g3k4l")
+Panel/styles/panel = ExtResource("1_g3k4l")

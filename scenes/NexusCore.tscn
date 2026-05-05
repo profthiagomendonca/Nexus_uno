@@ -1,0 +1,166 @@
+[gd_scene load_steps=9 format=3 uid="uid://c8k7j1v5b3r2"]
+
+[ext_resource type="Script" path="res://scripts/NexusCore.gd" id="1_x1a2b"]
+[ext_resource type="Theme" path="res://resources/GlobalTheme.tres" id="3_z4x5c"]
+
+[sub_resource type="Environment" id="Environment_v1u2t"]
+background_mode = 1
+background_color = Color(0.01, 0.01, 0.03, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.1, 0.1, 0.2, 1)
+glow_enabled = true
+glow_intensity = 0.5
+glow_strength = 1.0
+glow_bloom = 0.1
+glow_blend_mode = 1
+
+[sub_resource type="Shader" id="Shader_w5r6t"]
+code = "shader_type spatial;
+render_mode unshaded, blend_add, depth_draw_never;
+void fragment() {
+    float dist = distance(UV, vec2(0.5));
+    float mask = smoothstep(0.5, 0.05, dist);
+    ALBEDO = vec3(1.2, 1.2, 2.0); // Brighter blue-white
+    ALPHA = mask * COLOR.a * 1.0;
+}"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_z3c4d"]
+render_priority = 0
+shader = SubResource("Shader_w5r6t")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_x1a2b"]
+emission_shape = 3
+emission_box_extents = Vector3(80, 50, 80)
+gravity = Vector3(0, 0, 0)
+initial_velocity_min = 0.01
+initial_velocity_max = 0.02
+scale_min = 0.2
+scale_max = 0.5
+color = Color(1, 1, 1, 0.8)
+
+[sub_resource type="QuadMesh" id="QuadMesh_y2b1c"]
+material = SubResource("ShaderMaterial_z3c4d")
+size = Vector2(0.2, 0.2)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_glass"]
+bg_color = Color(0.05, 0.05, 0.1, 0.7)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 0.2)
+corner_radius_top_left = 25
+corner_radius_top_right = 25
+corner_radius_bottom_right = 25
+corner_radius_bottom_left = 25
+expand_margin_left = 15.0
+expand_margin_right = 15.0
+
+[node name="NexusCore" type="Node3D"]
+script = ExtResource("1_x1a2b")
+
+[node name="ElementsContainer" type="Node3D" parent="."]
+
+[node name="Stardust" type="GPUParticles3D" parent="."]
+amount = 2000
+lifetime = 40.0
+preprocess = 40.0
+explosiveness = 0.0
+local_coords = false
+visibility_aabb = AABB(-200, -100, -200, 400, 200, 400)
+process_material = SubResource("ParticleProcessMaterial_x1a2b")
+draw_pass_1 = SubResource("QuadMesh_y2b1c")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.939693, 0.34202, 0, -0.34202, 0.939693, 0, 4, 18)
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.5, 0.866025, 0, -0.866025, 0.5, 0, 5, 0)
+light_energy = 0.5
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_v1u2t")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="FilterButtons" type="HBoxContainer" parent="UI"]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -300.0
+offset_top = -100.0
+offset_right = 300.0
+offset_bottom = -50.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 30
+alignment = 1
+
+[node name="DefaultBtn" type="Button" parent="UI/FilterButtons"]
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_glass")
+text = "Padrão"
+
+[node name="RadiusBtn" type="Button" parent="UI/FilterButtons"]
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_glass")
+text = "Raio Atômico"
+
+[node name="ENBtn" type="Button" parent="UI/FilterButtons"]
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_glass")
+text = "Eletronegatividade"
+
+[node name="InfoPanel" type="Panel" parent="UI"]
+visible = false
+offset_left = 40.0
+offset_top = 40.0
+offset_right = 340.0
+offset_bottom = 340.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_glass")
+
+[node name="VBox" type="VBoxContainer" parent="UI/InfoPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+
+[node name="Symbol" type="Label" parent="UI/InfoPanel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 64
+text = "H"
+horizontal_alignment = 1
+
+[node name="Name" type="Label" parent="UI/InfoPanel/VBox"]
+layout_mode = 2
+text = "Hidrogênio"
+horizontal_alignment = 1
+
+[node name="Details" type="Label" parent="UI/InfoPanel/VBox"]
+layout_mode = 2
+text = "Massa: 1.008
+Eletroneg.: 2.20"
+horizontal_alignment = 1
+
+[node name="CloseBtn" type="Button" parent="UI/InfoPanel"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -40.0
+offset_bottom = 40.0
+grow_horizontal = 0
+text = "X"
+
+[node name="Label3D" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, 0)
+billboard = 1
+text = "NÊXUS ELEMENTAL"
+font_size = 72
+outline_size = 20
+modulate = Color(1, 1, 1, 0.4)

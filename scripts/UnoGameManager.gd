@@ -1,0 +1,384 @@
+extends Node2D
+
+@onready var deck_manager = $DeckManager
+@onready var hand_container = $UI/Hand/Cards
+@onready var opponent_hand_container = $UI/OpponentHand/Cards
+@onready var discard_pile_view = $UI/Board/Piles/DiscardPile
+@onready var draw_pile_view = $UI/Board/Piles/DrawPileContainer/DrawPile
+@onready var message_label = $UI/Message
+@onready var color_selector = $UI/ColorSelector
+@onready var target_selector = $UI/TargetSelector
+@onready var target_grid = $UI/TargetSelector/VBox/Grid
+@onready var nexus_button = $UI/NexusButton
+
+var card_scene_path = "res://scenes/Carta.tscn"
+var card_script_path = "res://scripts/CardUI.gd"
+
+var current_top_card: CardData
+var current_turn_index = 0 # 0 = Jogador, 1+ = Robôs
+var total_players = 2
+var opponent_hands: Array = [] # Array de Arrays[CardData]
+var draw_stack = 0
+var nexus_called = false
+var game_direction = 1 # 1 para frente, -1 para trás
+var waiting_for_selection = false
+var finished_players: Array[int] = [] 
+
+func _ready():
+	var database = PeriodicDatabase.new()
+	deck_manager.create_deck(database.get_all_elements())
+	total_players = GameSettings.opponent_count + 1
+	
+	# Conectar botões de cores
+	$UI/ColorSelector/VBox/Grid/Btn_Yellow.pressed.connect(_on_color_selected.bind(11, Color(1, 0.8, 0)))
+	$UI/ColorSelector/VBox/Grid/Btn_Green.pressed.connect(_on_color_selected.bind(16, Color(0.2, 0.8, 0.2)))
+	$UI/ColorSelector/VBox/Grid/Btn_Red.pressed.connect(_on_color_selected.bind(1, Color(0.8, 0.2, 0.2)))
+	$UI/ColorSelector/VBox/Grid/Btn_Blue.pressed.connect(_on_color_selected.bind(17, Color(0.2, 0.6, 1)))
+	
+	start_game()
+
+func start_game():
+	# Inicializar mãos para todos os jogadores
+	opponent_hands.clear()
+	for i in range(total_players):
+		if i == 0: # Jogador
+			for j in range(7): add_card_to_hand(deck_manager.draw_card())
+		else: # Robôs
+			var bot_hand: Array[CardData] = []
+			for j in range(7): bot_hand.append(deck_manager.draw_card())
+			opponent_hands.append(bot_hand)
+	
+	current_top_card = deck_manager.draw_card()
+	while current_top_card.type != CardData.CardType.ELEMENT:
+		deck_manager.discard_card(current_top_card)
+		current_top_card = deck_manager.draw_card()
+	
+	update_board_visual()
+	reorganize_hand()
+	reorganize_opponent_hand()
+
+func add_card_to_hand(card_data: CardData):
+	if not card_data: return
+	var scene = load(card_scene_path)
+	var card_ui = scene.instantiate()
+	var script = load(card_script_path)
+	if script: card_ui.set_script(script)
+	hand_container.add_child(card_ui)
+	card_ui.setup(card_data)
+	card_ui.gui_input.connect(_on_card_input.bind(card_ui))
+	reorganize_hand()
+
+func _on_card_input(event: InputEvent, card_ui: Control):
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if current_turn_index != 0: return
+		var card_data = card_ui.get("data")
+		
+		if draw_stack > 0:
+			if card_data.type == CardData.CardType.WILD_DRAW_FOUR or card_data.type == CardData.CardType.DRAW_TWO:
+				play_card(card_ui)
+			else:
+				message_label.text = "Acumule ou compre o stack!"
+			return
+
+		if card_data.is_match(current_top_card):
+			play_card(card_ui)
+
+func play_card(card_ui: Control):
+	var played_data = card_ui.get("data")
+	
+	if hand_container.get_child_count() == 2:
+		nexus_button.show()
+		nexus_called = false
+		get_tree().create_timer(2.0).timeout.connect(func(): nexus_button.hide())
+	
+	hand_container.remove_child(card_ui)
+	card_ui.queue_free()
+	
+	deck_manager.discard_card(current_top_card)
+	current_top_card = played_data
+	
+	update_board_visual()
+	reorganize_hand()
+	
+	if played_data.type == CardData.CardType.WILD or played_data.type == CardData.CardType.WILD_DRAW_FOUR:
+		waiting_for_selection = true
+		color_selector.show()
+	elif played_data.type == CardData.CardType.SWAP_HANDS:
+		waiting_for_selection = true
+		_show_target_selector()
+	else:
+		process_special_effect(played_data, 0)
+		check_win_condition()
+		next_turn()
+
+func _show_target_selector():
+	for child in target_grid.get_children(): child.queue_free()
+	for i in range(1, total_players):
+		if finished_players.has(i): continue
+		var btn = Button.new()
+		btn.text = "Robô " + str(i)
+		btn.custom_minimum_size = Vector2(100, 50)
+		btn.pressed.connect(_on_target_selected.bind(i))
+		target_grid.add_child(btn)
+	
+	# Colocando na mesma posição da mensagem
+	target_selector.position = Vector2(101, 158)
+	target_selector.show()
+
+func _on_target_selected(bot_idx: int):
+	target_selector.hide()
+	waiting_for_selection = false
+	swap_with_player(bot_idx)
+	check_win_condition()
+	next_turn()
+
+func _on_color_selected(group_id: int, color: Color):
+	current_top_card.group = group_id
+	current_top_card.color_override = color
+	color_selector.hide()
+	waiting_for_selection = false
+	update_board_visual()
+	check_win_condition()
+	next_turn()
+func start_bot_turn(bot_index: int):
+	if finished_players.has(bot_index):
+		next_turn()
+		return
+
+	# Mostrar botão Nexus se o robô estiver com 1 carta e você puder denunciar
+	var bot_hand = opponent_hands[bot_index - 1]
+	if bot_hand.size() == 1:
+		nexus_button.show()
+		nexus_called = false
+		get_tree().create_timer(1.2).timeout.connect(func(): nexus_button.hide())
+
+	# Mensagem fixa no centro
+	message_label.text = "Robô " + str(bot_index) + " pensando..."
+	
+	await get_tree().create_timer(1.5).timeout
+	
+	# Penalidade Nexus para o Robô se você apertou o botão
+	if bot_hand.size() == 1 and nexus_called:
+		message_label.text = "PEGOU O ROBÔ! Ele compra +4."
+		for i in range(4): bot_hand.append(deck_manager.draw_card())
+		nexus_called = false
+		reorganize_opponent_hand()
+		await get_tree().create_timer(1.5).timeout
+		next_turn()
+		return
+
+	# Penalidade Nexus para o Jogador se for o turno do próximo robô e ele não avisou
+	if hand_container.get_child_count() == 1 and not nexus_called:
+		message_label.text = "Robô te pegou! Compre +4."
+		for i in range(4): add_card_to_hand(deck_manager.draw_card())
+		await get_tree().create_timer(1.5).timeout
+
+	var valid_card_index = -1
+	for i in range(bot_hand.size()):
+		var card = bot_hand[i]
+		if draw_stack > 0:
+			if card.type == CardData.CardType.WILD_DRAW_FOUR or card.type == CardData.CardType.DRAW_TWO:
+				valid_card_index = i
+				break
+		elif card.is_match(current_top_card):
+			valid_card_index = i
+			break
+			
+	if valid_card_index != -1:
+		var card_data = bot_hand[valid_card_index]
+		bot_hand.remove_at(valid_card_index)
+		deck_manager.discard_card(current_top_card)
+		current_top_card = card_data
+		
+		if card_data.type == CardData.CardType.WILD or card_data.type == CardData.CardType.WILD_DRAW_FOUR:
+			var choices = [
+				{"g": 1, "c": Color(0.8, 0.2, 0.2), "n": "Vermelho (Alcalinos)"},
+				{"g": 11, "c": Color(1, 0.8, 0), "n": "Amarelo (Metais)"},
+				{"g": 16, "c": Color(0.2, 0.8, 0.2), "n": "Verde (Não-metais)"},
+				{"g": 17, "c": Color(0.2, 0.6, 1.0), "n": "Azul (Halogênios)"}
+			]
+			var choice = choices.pick_random()
+			card_data.group = choice["g"]
+			card_data.color_override = choice["c"]
+			
+			update_board_visual()
+			reorganize_opponent_hand()
+			process_special_effect(card_data, bot_index)
+			
+			message_label.text = "Robô escolheu a cor:\n" + choice["n"]
+			await get_tree().create_timer(2.0).timeout
+		else:
+			update_board_visual()
+			reorganize_opponent_hand()
+			process_special_effect(card_data, bot_index)
+		
+		if bot_hand.size() == 0:
+			finished_players.append(bot_index)
+			message_label.text = "Robô " + str(bot_index) + " terminou!"
+			await get_tree().create_timer(1.5).timeout
+		
+		check_win_condition()
+		next_turn()
+	else:
+		if draw_stack > 0:
+			message_label.text = "Robô " + str(bot_index) + " comprou " + str(draw_stack) + " cartas!"
+			for i in range(draw_stack): bot_hand.append(deck_manager.draw_card())
+			draw_stack = 0
+		else:
+			message_label.text = "Robô " + str(bot_index) + " comprou uma carta."
+			bot_hand.append(deck_manager.draw_card())
+		
+		reorganize_opponent_hand()
+		await get_tree().create_timer(1.0).timeout
+		next_turn()
+
+func _get_bot_ui_position(bot_index: int) -> Vector2:
+	var screen_width = get_viewport_rect().size.x
+	var bot_spacing = screen_width / (opponent_hands.size() + 1)
+	return Vector2(bot_spacing * bot_index, 50)
+
+func process_special_effect(card: CardData, player_idx: int):
+	match card.type:
+		CardData.CardType.SKIP:
+			_advance_turn()
+		CardData.CardType.REVERSE:
+			if total_players == 2:
+				_advance_turn()
+			else:
+				game_direction *= -1
+		CardData.CardType.DRAW_TWO:
+			draw_stack += 2
+		CardData.CardType.WILD_DRAW_FOUR:
+			draw_stack += 4
+		CardData.CardType.SWAP_HANDS:
+			var next_idx = (player_idx + game_direction) % total_players
+			if next_idx < 0: next_idx = total_players - 1
+			# Pula jogadores que já terminaram na troca
+			while finished_players.has(next_idx) and finished_players.size() < total_players - 1:
+				next_idx = (next_idx + game_direction) % total_players
+				if next_idx < 0: next_idx = total_players - 1
+			
+			if player_idx == 0: swap_with_player(next_idx)
+			elif next_idx == 0: swap_with_player(player_idx)
+			else: swap_bots(player_idx, next_idx)
+
+func swap_with_player(bot_idx):
+	var player_data: Array[CardData] = []
+	for card_ui in hand_container.get_children():
+		player_data.append(card_ui.get("data"))
+		card_ui.queue_free()
+	var bot_hand = opponent_hands[bot_idx - 1]
+	opponent_hands[bot_idx - 1] = player_data
+	for data in bot_hand: add_card_to_hand(data)
+	reorganize_hand()
+	reorganize_opponent_hand()
+
+func swap_bots(b1, b2):
+	var temp = opponent_hands[b1-1]
+	opponent_hands[b1-1] = opponent_hands[b2-1]
+	opponent_hands[b2-1] = temp
+	reorganize_opponent_hand()
+
+func _on_draw_pile_pressed():
+	if current_turn_index != 0: return
+	if draw_stack > 0:
+		for i in range(draw_stack): add_card_to_hand(deck_manager.draw_card())
+		draw_stack = 0
+	else:
+		add_card_to_hand(deck_manager.draw_card())
+	next_turn()
+
+func reorganize_hand():
+	var cards = hand_container.get_children()
+	var count = cards.size()
+	if count == 0: return
+	var screen_width = get_viewport_rect().size.x
+	var spacing = min(75, (screen_width - 250) / count) 
+	var total_width = spacing * (count - 1)
+	var start_x = (screen_width / 2.0) - (total_width / 2.0)
+	for i in range(count):
+		var card = cards[i]
+		var tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
+		tween.tween_property(card, "position", Vector2(start_x + (i * spacing) - 80, 20), 0.4)
+		tween.tween_property(card, "rotation", 0.0, 0.4)
+		card.z_index = i
+
+func reorganize_opponent_hand():
+	for child in opponent_hand_container.get_children(): child.queue_free()
+	var screen_width = get_viewport_rect().size.x
+	var bot_spacing = screen_width / (opponent_hands.size() + 1)
+	
+	for i in range(opponent_hands.size()):
+		var bot_idx = i + 1
+		var bot_x = bot_spacing * bot_idx
+		var bot_hand = opponent_hands[i]
+		
+		# Adicionar Nome do Robô
+		var name_label = Label.new()
+		name_label.text = "Robô " + str(bot_idx)
+		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		name_label.position = Vector2(bot_x - 50, 40) # Abaixo das cartas
+		name_label.add_theme_font_size_override("font_size", 16)
+		if finished_players.has(bot_idx):
+			name_label.text += " (Finalizou)"
+			name_label.modulate = Color(0.5, 1, 0.5)
+		opponent_hand_container.add_child(name_label)
+		
+		for j in range(bot_hand.size()):
+			var scene = load(card_scene_path)
+			var card_ui = scene.instantiate()
+			var script = load(card_script_path)
+			if script: card_ui.set_script(script)
+			opponent_hand_container.add_child(card_ui)
+			card_ui.setup(null, true)
+			card_ui.scale = Vector2(0.4, 0.4)
+			card_ui.position = Vector2(bot_x - 30 + (j * 15), -40)
+			card_ui.z_index = j
+
+func update_board_visual():
+	for child in discard_pile_view.get_children(): child.queue_free()
+	var scene = load(card_scene_path)
+	var top_ui = scene.instantiate()
+	var script = load(card_script_path)
+	if script: top_ui.set_script(script)
+	discard_pile_view.add_child(top_ui)
+	top_ui.setup(current_top_card)
+	top_ui.rotation = deg_to_rad(randf_range(-10, 10))
+	top_ui.scale = Vector2(0.8, 0.8)
+
+func _advance_turn():
+	current_turn_index = (current_turn_index + game_direction) % total_players
+	if current_turn_index < 0: current_turn_index = total_players - 1
+	# Pula se o jogador já terminou
+	if finished_players.has(current_turn_index):
+		_advance_turn()
+
+func next_turn():
+	_advance_turn()
+	
+	# Posição travada via script conforme solicitado (puxado levemente para esquerda)
+	message_label.position = Vector2(85, 158)
+	message_label.add_theme_font_size_override("font_size", 20) # Reduzido para não sobrepor
+	
+	if current_turn_index == 0:
+		message_label.text = "SUA VEZ!"
+	else:
+		start_bot_turn(current_turn_index)
+
+func _on_nexus_pressed():
+	nexus_called = true
+	nexus_button.hide()
+	# Se for turno do robô, a denúncia é processada no start_bot_turn
+
+func check_win_condition():
+	if hand_container.get_child_count() == 0:
+		message_label.text = "VOCÊ VENCEU!"
+		get_tree().paused = true
+	
+	# Verifica se sobrou apenas um perdedor
+	if finished_players.size() >= total_players - 1:
+		if not finished_players.has(0):
+			message_label.text = "Que pena, você perdeu!"
+		else:
+			message_label.text = "FIM DE JOGO!"
+		get_tree().paused = true

@@ -1,0 +1,110 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/MainMenu.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/fundo_menu.png" id="2_bg"]
+[ext_resource type="StyleBox" path="res://resources/GlassStyleBox.tres" id="5_glass"]
+[ext_resource type="AudioStream" path="res://assets/Tema.mp3" id="6_music"]
+
+[node name="MainMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="BG" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_bg")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Overlay" type="ColorRect" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.2)
+
+[node name="Center" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -300.0
+offset_top = -320.0
+offset_right = 300.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="VBox" type="VBoxContainer" parent="Center"]
+layout_mode = 2
+theme_override_constants/separation = 15
+
+[node name="Label" type="Label" parent="Center/VBox"]
+layout_mode = 2
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_font_sizes/font_size = 20
+text = "Selecione o número de Oponentes:"
+horizontal_alignment = 1
+
+[node name="HBox" type="HBoxContainer" parent="Center/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 25
+alignment = 1
+
+[node name="Btn1" type="Button" parent="Center/VBox/HBox"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+theme_override_styles/normal = ExtResource("5_glass")
+text = "1"
+
+[node name="Btn2" type="Button" parent="Center/VBox/HBox"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+theme_override_styles/normal = ExtResource("5_glass")
+text = "2"
+
+[node name="Btn3" type="Button" parent="Center/VBox/HBox"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+theme_override_styles/normal = ExtResource("5_glass")
+text = "3"
+
+[node name="Btn4" type="Button" parent="Center/VBox/HBox"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+theme_override_styles/normal = ExtResource("5_glass")
+text = "4"
+
+[node name="Spacer2" type="Control" parent="Center"]
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+
+[node name="StartBtn" type="Button" parent="Center"]
+custom_minimum_size = Vector2(280, 80)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 28
+theme_override_styles/normal = ExtResource("5_glass")
+text = "INICIAR JOGO"
+
+[node name="Music" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("6_music")
+autoplay = true
