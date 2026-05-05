@@ -23,7 +23,6 @@ var nexus_called = false
 var game_direction = 1 # 1 para frente, -1 para trás
 var waiting_for_selection = false
 var has_drawn_this_turn = false
-var has_drawn_this_turn = false
 var finished_players: Array[int] = [] 
 
 func _ready():
@@ -233,13 +232,47 @@ func start_bot_turn(bot_index: int):
 			message_label.text = "Robô " + str(bot_index) + " comprou " + str(draw_stack) + " cartas!"
 			for i in range(draw_stack): bot_hand.append(deck_manager.draw_card())
 			draw_stack = 0
+			reorganize_opponent_hand()
+			await get_tree().create_timer(1.0).timeout
+			next_turn()
 		else:
 			message_label.text = "Robô " + str(bot_index) + " comprou uma carta."
-			bot_hand.append(deck_manager.draw_card())
-		
-		reorganize_opponent_hand()
-		await get_tree().create_timer(1.0).timeout
-		next_turn()
+			var drawn_card = deck_manager.draw_card()
+			bot_hand.append(drawn_card)
+			
+			if drawn_card.is_match(current_top_card) or drawn_card.type == CardData.CardType.WILD or drawn_card.type == CardData.CardType.WILD_DRAW_FOUR:
+				message_label.text = "A carta serve! Robô " + str(bot_index) + " vai jogar."
+				await get_tree().create_timer(1.0).timeout
+				bot_hand.erase(drawn_card)
+				deck_manager.discard_card(current_top_card)
+				current_top_card = drawn_card
+				
+				if drawn_card.type == CardData.CardType.WILD or drawn_card.type == CardData.CardType.WILD_DRAW_FOUR:
+					var choices = [{"g": 1, "c": Color(0.8, 0.2, 0.2), "n": "Vermelho"}, {"g": 11, "c": Color(1, 0.8, 0), "n": "Amarelo"}, {"g": 16, "c": Color(0.2, 0.8, 0.2), "n": "Verde"}, {"g": 17, "c": Color(0.2, 0.6, 1.0), "n": "Azul"}]
+					var choice = choices.pick_random()
+					drawn_card.group = choice["g"]
+					drawn_card.color_override = choice["c"]
+					_show_color_change_message("Robô escolheu:\n" + choice["n"])
+					await get_tree().create_timer(1.5).timeout
+				update_board_visual()
+				reorganize_opponent_hand()
+				process_special_effect(drawn_card, bot_index)
+				
+				if bot_hand.size() == 1:
+					nexus_button.show()
+					nexus_called = false
+					get_tree().create_timer(2.0).timeout.connect(func(): nexus_button.hide())
+				if bot_hand.size() == 0:
+					finished_players.append(bot_index)
+					message_label.text = "Robô " + str(bot_index) + " terminou!"
+					await get_tree().create_timer(1.5).timeout
+				if check_win_condition(): return
+				next_turn()
+				return
+				
+			reorganize_opponent_hand()
+			await get_tree().create_timer(1.0).timeout
+			next_turn()
 
 func _get_bot_ui_position(bot_index: int) -> Vector2:
 	var screen_width = get_viewport_rect().size.x
@@ -375,6 +408,7 @@ func update_board_visual():
 	top_ui.scale = Vector2(0.8, 0.8)
 
 func _advance_turn():
+	has_drawn_this_turn = false
 	current_turn_index = (current_turn_index + game_direction) % total_players
 	if current_turn_index < 0: current_turn_index = total_players - 1
 	# Pula se o jogador já terminou
