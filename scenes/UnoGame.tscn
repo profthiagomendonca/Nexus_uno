@@ -205,13 +205,11 @@ grow_vertical = 2
 layout_mode = 2
 
 [node name="Label" type="Label" parent="UI/ColorSelector/VBox" unique_id=1659944742]
-visible = false
 layout_mode = 2
 text = "Escolha uma Família:"
 horizontal_alignment = 1
 
 [node name="Grid" type="GridContainer" parent="UI/ColorSelector/VBox" unique_id=177284670]
-visible = false
 layout_mode = 2
 size_flags_vertical = 3
 columns = 2

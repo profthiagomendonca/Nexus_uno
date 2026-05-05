@@ -7,6 +7,7 @@ class_name CardUI
 @onready var curiosity_label = $Margin/Content/Curiosity
 @onready var period_top_label = $Margin/Content/TopRow/PeriodTop
 @onready var period_bottom_label = $Margin/Content/BottomRow/PeriodBottom
+@onready var bottom_row = $Margin/Content/BottomRow
 @onready var special_value_label = $Margin/Content/TopRow/SpecialValue
 @onready var group_label = $Margin/Content/GroupLabel
 @onready var background = $Background
@@ -54,6 +55,8 @@ func update_ui():
 	special_value_label.hide()
 	center_text.hide()
 	icon_rect.hide()
+	icon_rect.pivot_offset = Vector2(55, 55) # Centro do ícone (110x110)
+	icon_rect.scale = Vector2(1, 1) # Reseta a escala para as outras cartas
 	group_label.show()
 	
 	# Configurações de Texto
@@ -71,6 +74,7 @@ func update_ui():
 		atomic_number_label.show()
 		icon_rect.hide()
 		symbol_label.show()
+		bottom_row.show()
 	else:
 		symbol_label.hide()
 		name_label.text = data.name
@@ -78,6 +82,7 @@ func update_ui():
 		curiosity_label.hide()
 		atomic_number_label.hide()
 		icon_rect.show()
+		bottom_row.hide()
 		
 		var tex_path = ""
 		match data.type:
@@ -89,12 +94,11 @@ func update_ui():
 				special_value_label.show()
 			CardData.CardType.WILD: tex_path = wild_icon
 			CardData.CardType.WILD_DRAW_FOUR:
-				tex_path = ""
-				center_text.text = "+4"
-				center_text.show()
-				icon_rect.hide()
+				tex_path = chain_reaction_icon
 				special_value_label.text = "+4"
 				special_value_label.show()
+				icon_rect.show()
+				icon_rect.scale = Vector2(1.6, 1.6) # Reduzido levemente de 1.8 para 1.6
 			CardData.CardType.SWAP_HANDS:
 				tex_path = swap_icon
 				special_value_label.text = "TROCA"
