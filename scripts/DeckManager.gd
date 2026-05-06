@@ -3,6 +3,8 @@ extends Node
 var deck: Array[CardData] = []
 var discard_pile: Array[CardData] = []
 
+signal deck_reshuffled
+
 func create_deck(elements_data: Dictionary):
 	deck.clear()
 	
@@ -56,15 +58,12 @@ func create_deck(elements_data: Dictionary):
 			_add_special_card(CardData.CardType.SKIP, "BLOQUEIO", family)
 			_add_special_card(CardData.CardType.REVERSE, "INVERSÃO", family)
 			_add_special_card(CardData.CardType.DRAW_TWO, "REAÇÃO +2", family)
+		_add_special_card(CardData.CardType.SWAP_HANDS, "LIGAÇÃO\nCOVALENTE", family)
 
 	# Cartas Coringa (Wild)
 	for c in range(4):
 		_add_wild_card(CardData.CardType.WILD, "Catalisador", Color(1, 1, 1))
 		_add_wild_card(CardData.CardType.WILD_DRAW_FOUR, "Cadeia +4", Color(1, 1, 1))
-	
-	# Troca de Mão
-	for c in range(2):
-		_add_wild_card(CardData.CardType.SWAP_HANDS, "Ligação\nCovalente", Color(1, 0, 1))
 		
 	deck.shuffle()
 	print("Baralho pronto com ", deck.size(), " cartas.")
@@ -98,3 +97,5 @@ func reshuffle_discard_pile():
 		deck = discard_pile.duplicate()
 		deck.shuffle()
 		discard_pile = [top_card]
+		deck_reshuffled.emit()
+		print("Baralho reembaralhado com ", deck.size(), " cartas.")

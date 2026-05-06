@@ -45,9 +45,7 @@ func update_ui():
 		border.hide()
 		$Margin.hide()
 		return
-
 	if not data: return
-	
 	back_visual.hide()
 	background.show()
 	border.show()
@@ -55,15 +53,12 @@ func update_ui():
 	special_value_label.hide()
 	center_text.hide()
 	icon_rect.hide()
-	icon_rect.pivot_offset = Vector2(55, 55) # Centro do ícone (110x110)
-	icon_rect.scale = Vector2(1, 1) # Reseta a escala para as outras cartas
+	icon_rect.pivot_offset = Vector2(55, 55)
+	icon_rect.scale = Vector2(1, 1)
 	group_label.show()
-	
-	# Configurações de Texto
 	period_top_label.text = str(data.period) if data.period > 0 else ""
 	period_bottom_label.text = period_top_label.text
 	group_label.text = _get_group_name(data.group)
-	
 	if data.type == CardData.CardType.ELEMENT:
 		symbol_label.text = data.symbol
 		name_label.text = data.name
@@ -78,12 +73,11 @@ func update_ui():
 	else:
 		symbol_label.hide()
 		name_label.text = data.name
-		name_label.add_theme_font_size_override("font_size", 22) # Nome maior para especiais
+		name_label.add_theme_font_size_override("font_size", 22)
 		curiosity_label.hide()
 		atomic_number_label.hide()
 		icon_rect.show()
 		bottom_row.hide()
-		
 		var tex_path = ""
 		match data.type:
 			CardData.CardType.SKIP: tex_path = noble_gas_icon
@@ -98,18 +92,15 @@ func update_ui():
 				special_value_label.text = "+4"
 				special_value_label.show()
 				icon_rect.show()
-				icon_rect.scale = Vector2(1.6, 1.6) # Reduzido levemente de 1.8 para 1.6
+				icon_rect.scale = Vector2(1.6, 1.6)
 			CardData.CardType.SWAP_HANDS:
 				tex_path = swap_icon
 				special_value_label.text = "TROCA"
 				special_value_label.show()
-			
 		if tex_path != "": icon_rect.texture = load(tex_path)
-		
 	var card_color = data.color
 	if data.color_override != Color.TRANSPARENT:
 		card_color = data.color_override
-		
 	if border is Panel:
 		var stylebox = border.get_theme_stylebox("panel").duplicate()
 		if stylebox is StyleBoxFlat:
@@ -125,9 +116,9 @@ func _get_group_name(g_id: int) -> String:
 		11: return "Metais"
 		13: return "Boro"
 		14: return "Carbono"
-		15: return "Nitrogênio"
-		16: return "Não-metais"
-		17: return "Halogênios"
+		15: return "Nitrog" + char(234) + "nio"
+		16: return "Ametais"
+		17: return "Halog" + char(234) + "nios"
 		18: return "Gases Nobres"
 		_: return ""
 

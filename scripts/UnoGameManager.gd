@@ -23,6 +23,7 @@ var nexus_called = false
 var game_direction = 1 # 1 para frente, -1 para trás
 var waiting_for_selection = false
 var has_drawn_this_turn = false
+var player_nexus_safe = false # Nova flag exclusiva para o jogador
 var finished_players: Array[int] = [] 
 
 func _ready():
@@ -35,6 +36,8 @@ func _ready():
 	$UI/ColorSelector/VBox/Grid/Btn_Green.pressed.connect(_on_color_selected.bind(16, Color(0.2, 0.8, 0.2)))
 	$UI/ColorSelector/VBox/Grid/Btn_Red.pressed.connect(_on_color_selected.bind(1, Color(0.8, 0.2, 0.2)))
 	$UI/ColorSelector/VBox/Grid/Btn_Blue.pressed.connect(_on_color_selected.bind(17, Color(0.2, 0.6, 1)))
+	
+	deck_manager.deck_reshuffled.connect(_on_deck_reshuffled)
 	
 	start_game()
 
@@ -57,6 +60,8 @@ func start_game():
 	update_board_visual()
 	reorganize_hand()
 	reorganize_opponent_hand()
+	player_nexus_safe = false
+	nexus_called = false
 
 func add_card_to_hand(card_data: CardData):
 	if not card_data: return
@@ -89,6 +94,7 @@ func play_card(card_ui: Control):
 	
 	if hand_container.get_child_count() == 2:
 		nexus_button.show()
+		player_nexus_safe = false
 		nexus_called = false
 		get_tree().create_timer(2.0).timeout.connect(func(): nexus_button.hide())
 	
@@ -103,36 +109,15 @@ func play_card(card_ui: Control):
 	
 	if played_data.type == CardData.CardType.WILD or played_data.type == CardData.CardType.WILD_DRAW_FOUR:
 		waiting_for_selection = true
-		color_selector.position = Vector2(101, 158)
 		color_selector.show()
 	elif played_data.type == CardData.CardType.SWAP_HANDS:
-		waiting_for_selection = true
+		# Se foi a última carta, vence sem precisar trocar!
+		if check_win_condition(): return
 		_show_target_selector()
 	else:
 		process_special_effect(played_data, 0)
 		if check_win_condition(): return
 		next_turn()
-
-func _show_target_selector():
-	for child in target_grid.get_children(): child.queue_free()
-	for i in range(1, total_players):
-		if finished_players.has(i): continue
-		var btn = Button.new()
-		btn.text = "Robô " + str(i)
-		btn.custom_minimum_size = Vector2(100, 50)
-		btn.pressed.connect(_on_target_selected.bind(i))
-		target_grid.add_child(btn)
-	
-	# Colocando na mesma posição da mensagem
-	target_selector.position = Vector2(101, 158)
-	target_selector.show()
-
-func _on_target_selected(bot_idx: int):
-	target_selector.hide()
-	waiting_for_selection = false
-	swap_with_player(bot_idx)
-	if check_win_condition(): return
-	next_turn()
 
 func _on_color_selected(group_id: int, color: Color):
 	current_top_card.group = group_id
@@ -148,8 +133,12 @@ func _on_color_selected(group_id: int, color: Color):
 	elif group_id == 17: color_name = "Azul"
 	_show_color_change_message("Você escolheu:\n" + color_name)
 	
+	if current_top_card.type == CardData.CardType.WILD_DRAW_FOUR:
+		process_special_effect(current_top_card, 0)
+	
 	if check_win_condition(): return
 	next_turn()
+
 func start_bot_turn(bot_index: int):
 	if finished_players.has(bot_index):
 		next_turn()
@@ -167,11 +156,9 @@ func start_bot_turn(bot_index: int):
 	
 	await get_tree().create_timer(1.5).timeout
 	
-
-
-	# Penalidade Nexus para o Jogador se for o turno do próximo robô e ele não avisou
-	if hand_container.get_child_count() == 1 and not nexus_called:
-		nexus_button.hide() # Trava o botão para não ser clicado tardiamente
+	# Penalidade Nexus para o Jogador se ele não avisou
+	if hand_container.get_child_count() == 1 and not player_nexus_safe:
+		nexus_button.hide() 
 		message_label.text = "Robô te pegou! Compre +4."
 		for i in range(4): add_card_to_hand(deck_manager.draw_card())
 		await get_tree().create_timer(1.5).timeout
@@ -179,6 +166,7 @@ func start_bot_turn(bot_index: int):
 	var valid_card_index = -1
 	for i in range(bot_hand.size()):
 		var card = bot_hand[i]
+		if not card: continue # Segurança contra cartas nulas
 		if draw_stack > 0:
 			if card.type == CardData.CardType.WILD_DRAW_FOUR or card.type == CardData.CardType.DRAW_TWO:
 				valid_card_index = i
@@ -197,7 +185,7 @@ func start_bot_turn(bot_index: int):
 			var choices = [
 				{"g": 1, "c": Color(0.8, 0.2, 0.2), "n": "Vermelho (Alcalinos)"},
 				{"g": 11, "c": Color(1, 0.8, 0), "n": "Amarelo (Metais)"},
-				{"g": 16, "c": Color(0.2, 0.8, 0.2), "n": "Verde (Não-metais)"},
+				{"g": 16, "c": Color(0.2, 0.8, 0.2), "n": "Verde (Ametais)"},
 				{"g": 17, "c": Color(0.2, 0.6, 1.0), "n": "Azul (Halogênios)"}
 			]
 			var choice = choices.pick_random()
@@ -238,46 +226,42 @@ func start_bot_turn(bot_index: int):
 		else:
 			message_label.text = "Robô " + str(bot_index) + " comprou uma carta."
 			var drawn_card = deck_manager.draw_card()
-			bot_hand.append(drawn_card)
-			
-			if drawn_card.is_match(current_top_card) or drawn_card.type == CardData.CardType.WILD or drawn_card.type == CardData.CardType.WILD_DRAW_FOUR:
-				message_label.text = "A carta serve! Robô " + str(bot_index) + " vai jogar."
-				await get_tree().create_timer(1.0).timeout
-				bot_hand.erase(drawn_card)
-				deck_manager.discard_card(current_top_card)
-				current_top_card = drawn_card
-				
-				if drawn_card.type == CardData.CardType.WILD or drawn_card.type == CardData.CardType.WILD_DRAW_FOUR:
-					var choices = [{"g": 1, "c": Color(0.8, 0.2, 0.2), "n": "Vermelho"}, {"g": 11, "c": Color(1, 0.8, 0), "n": "Amarelo"}, {"g": 16, "c": Color(0.2, 0.8, 0.2), "n": "Verde"}, {"g": 17, "c": Color(0.2, 0.6, 1.0), "n": "Azul"}]
-					var choice = choices.pick_random()
-					drawn_card.group = choice["g"]
-					drawn_card.color_override = choice["c"]
-					_show_color_change_message("Robô escolheu:\n" + choice["n"])
-					await get_tree().create_timer(1.5).timeout
-				update_board_visual()
-				reorganize_opponent_hand()
-				process_special_effect(drawn_card, bot_index)
-				
-				if bot_hand.size() == 1:
-					nexus_button.show()
-					nexus_called = false
-					get_tree().create_timer(2.0).timeout.connect(func(): nexus_button.hide())
-				if bot_hand.size() == 0:
-					finished_players.append(bot_index)
-					message_label.text = "Robô " + str(bot_index) + " terminou!"
-					await get_tree().create_timer(1.5).timeout
-				if check_win_condition(): return
-				next_turn()
-				return
+			if drawn_card:
+				bot_hand.append(drawn_card)
+				if drawn_card.is_match(current_top_card) or drawn_card.type == CardData.CardType.WILD or drawn_card.type == CardData.CardType.WILD_DRAW_FOUR:
+					message_label.text = "Match perfeito! Robô " + str(bot_index) + " vai jogar."
+					await get_tree().create_timer(1.0).timeout
+					bot_hand.erase(drawn_card)
+					deck_manager.discard_card(current_top_card)
+					current_top_card = drawn_card
+					
+					if drawn_card.type == CardData.CardType.WILD or drawn_card.type == CardData.CardType.WILD_DRAW_FOUR:
+						var choices = [{"g": 1, "c": Color(0.8, 0.2, 0.2), "n": "Vermelho"}, {"g": 11, "c": Color(1, 0.8, 0), "n": "Amarelo"}, {"g": 16, "c": Color(0.2, 0.8, 0.2), "n": "Verde"}, {"g": 17, "c": Color(0.2, 0.6, 1.0), "n": "Azul"}]
+						var choice = choices.pick_random()
+						drawn_card.group = choice["g"]
+						drawn_card.color_override = choice["c"]
+						_show_color_change_message("Robô escolheu:\n" + choice["n"])
+						await get_tree().create_timer(1.5).timeout
+					update_board_visual()
+					reorganize_opponent_hand()
+					process_special_effect(drawn_card, bot_index)
+					
+					if bot_hand.size() == 1:
+						nexus_button.show()
+						nexus_called = false
+						get_tree().create_timer(2.0).timeout.connect(func(): nexus_button.hide())
+					if bot_hand.size() == 0:
+						finished_players.append(bot_index)
+						message_label.text = "Robô " + str(bot_index) + " terminou!"
+						await get_tree().create_timer(1.5).timeout
+					if check_win_condition(): return
+					next_turn()
+					return
 				
 			reorganize_opponent_hand()
 			await get_tree().create_timer(1.0).timeout
 			next_turn()
 
-func _get_bot_ui_position(bot_index: int) -> Vector2:
-	var screen_width = get_viewport_rect().size.x
-	var bot_spacing = screen_width / (opponent_hands.size() + 1)
-	return Vector2(bot_spacing * bot_index, 50)
 
 func process_special_effect(card: CardData, player_idx: int):
 	match card.type:
@@ -293,16 +277,64 @@ func process_special_effect(card: CardData, player_idx: int):
 		CardData.CardType.WILD_DRAW_FOUR:
 			draw_stack += 4
 		CardData.CardType.SWAP_HANDS:
+			# Se quem jogou a carta não tem mais nada na mão, ele venceu e não troca!
+			var current_hand_size = 0
+			if player_idx == 0:
+				current_hand_size = hand_container.get_child_count()
+			else:
+				current_hand_size = opponent_hands[player_idx - 1].size()
+			
+			if current_hand_size == 0:
+				return
+				
 			var next_idx = (player_idx + game_direction) % total_players
 			if next_idx < 0: next_idx = total_players - 1
 			# Pula jogadores que já terminaram na troca
 			while finished_players.has(next_idx) and finished_players.size() < total_players - 1:
 				next_idx = (next_idx + game_direction) % total_players
 				if next_idx < 0: next_idx = total_players - 1
-			
-			if player_idx == 0: swap_with_player(next_idx)
-			elif next_idx == 0: swap_with_player(player_idx)
-			else: swap_bots(player_idx, next_idx)
+				
+			if player_idx == 0:
+				_show_target_selector()
+			elif next_idx == 0:
+				swap_with_player(player_idx)
+			else:
+				swap_bots(player_idx, next_idx)
+
+func _show_target_selector():
+	target_selector.show()
+	waiting_for_selection = true
+	for child in target_grid.get_children(): child.queue_free()
+	
+	var glass = load("res://resources/GlassStyleBox.tres")
+	var font = load("res://assets/Orbitron.ttf")
+	
+	for i in range(1, total_players):
+		if finished_players.has(i): continue
+		var btn = Button.new()
+		btn.text = "Robô " + str(i)
+		btn.custom_minimum_size = Vector2(120, 50)
+		
+		# Estilo Premium
+		if glass: btn.add_theme_stylebox_override("normal", glass)
+		if font: btn.add_theme_font_override("font", font)
+		btn.add_theme_font_size_override("font_size", 18)
+		btn.add_theme_color_override("font_color", Color(0.2, 0.8, 1.0))
+		
+		btn.pressed.connect(_on_target_selected.bind(i))
+		target_grid.add_child(btn)
+
+func _on_target_selected(bot_idx: int):
+	target_selector.hide()
+	waiting_for_selection = false
+	swap_with_player(bot_idx)
+	
+	# Feedback visual
+	message_label.text = "Mãos trocadas com Robô " + str(bot_idx) + "!"
+	
+	if check_win_condition(): return
+	next_turn()
+
 
 func swap_with_player(bot_idx):
 	var player_data: Array[CardData] = []
@@ -339,9 +371,9 @@ func _on_draw_pile_pressed():
 			has_drawn_this_turn = true
 			
 			if drawn_card.is_match(current_top_card) or drawn_card.type == CardData.CardType.WILD or drawn_card.type == CardData.CardType.WILD_DRAW_FOUR:
-				message_label.text = "Jogue a carta comprada ou clique no baralho de novo para passar a vez."
+				message_label.text = "Match perfeito, carta acrescida."
 			else:
-				message_label.text = "A carta não serve. Passando a vez..."
+				message_label.text = "Match imperfeito, passou a vez."
 				await get_tree().create_timer(1.5).timeout
 				next_turn()
 
@@ -350,7 +382,7 @@ func reorganize_hand():
 	var count = cards.size()
 	if count == 0: return
 	var screen_width = get_viewport_rect().size.x
-	var spacing = min(75, (screen_width - 250) / count) 
+	var spacing = min(75, (screen_width - 250) / count)
 	var total_width = spacing * (count - 1)
 	var start_x = (screen_width / 2.0) - (total_width / 2.0)
 	for i in range(count):
@@ -362,39 +394,59 @@ func reorganize_hand():
 
 func reorganize_opponent_hand():
 	for child in opponent_hand_container.get_children(): child.queue_free()
-	var screen_width = get_viewport_rect().size.x
-	var bot_spacing = screen_width / (opponent_hands.size() + 1)
 	
 	for i in range(opponent_hands.size()):
 		var bot_idx = i + 1
-		var bot_x = bot_spacing * bot_idx
 		var bot_hand = opponent_hands[i]
+		var is_active = (current_turn_index == bot_idx)
 		
-		# Calcula um espaçamento dinâmico para não vazar a mão do robô
-		var max_width = 120.0
-		var card_spacing = min(15.0, max_width / max(1, bot_hand.size()))
+		# Container vertical para o Robô
+		var bot_box = VBoxContainer.new()
+		bot_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		bot_box.add_theme_constant_override("separation", 0) # Sem espaço entre nome e cartas
+		bot_box.alignment = BoxContainer.ALIGNMENT_BEGIN
+		opponent_hand_container.add_child(bot_box)
 		
-		# Adicionar Nome do Robô
+		# Painel do Nome (Premium)
+		var name_panel = PanelContainer.new()
+		var style = StyleBoxFlat.new()
+		style.bg_color = Color(0, 0, 0, 0.6)
+		style.set_corner_radius_all(5)
+		style.content_margin_top = 0 # Forçar margem zero
+		style.content_margin_bottom = 0 # Forçar margem zero
+		if is_active:
+			style.bg_color = Color(0, 0.4, 0.8, 0.8)
+			style.border_width_bottom = 2
+			style.border_color = Color(0, 1, 1, 1)
+		name_panel.add_theme_stylebox_override("panel", style)
+		bot_box.add_child(name_panel)
+		
 		var name_label = Label.new()
 		name_label.text = "Robô " + str(bot_idx)
+		if finished_players.has(bot_idx): name_label.text += " (Fim)"
 		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		name_label.position = Vector2(bot_x - 50, 40) # Abaixo das cartas
-		name_label.add_theme_font_size_override("font_size", 16)
-		if finished_players.has(bot_idx):
-			name_label.text += " (Finalizou)"
-			name_label.modulate = Color(0.5, 1, 0.5)
-		opponent_hand_container.add_child(name_label)
+		name_label.add_theme_font_size_override("font_size", 14) # Voltando para 14
+		name_panel.add_child(name_label)
 		
-		for j in range(bot_hand.size()):
+		# Espaço das Cartas (Super compacto para forçar subida)
+		var stack_area = Control.new()
+		stack_area.custom_minimum_size = Vector2(80, 30)
+		bot_box.add_child(stack_area)
+		
+		var card_count = bot_hand.size()
+		var card_spacing = min(12.0, 60.0 / max(1, card_count))
+		var total_width = (card_count - 1) * card_spacing
+		var start_x = (80 - total_width) / 2.0 - 28
+		
+		for j in range(card_count):
 			var scene = load(card_scene_path)
 			var card_ui = scene.instantiate()
 			var script = load(card_script_path)
 			if script: card_ui.set_script(script)
-			opponent_hand_container.add_child(card_ui)
+			stack_area.add_child(card_ui)
 			card_ui.setup(null, true)
 			card_ui.scale = Vector2(0.4, 0.4)
-			card_ui.position = Vector2(bot_x - 30 + (j * card_spacing), -40)
-			card_ui.z_index = j
+			card_ui.position = Vector2(start_x + (j * card_spacing), -65) # Subida máxima
 
 func update_board_visual():
 	for child in discard_pile_view.get_children(): child.queue_free()
@@ -417,10 +469,11 @@ func _advance_turn():
 
 func next_turn():
 	_advance_turn()
+	reorganize_opponent_hand() # Atualiza destaques
 	
-	# Posição travada via script conforme solicitado (puxado levemente para esquerda)
-	message_label.position = Vector2(85, 158)
-	message_label.add_theme_font_size_override("font_size", 20) # Reduzido para não sobrepor
+	# Posição e tamanho travados que você gostava
+	message_label.add_theme_font_size_override("font_size", 28)
+	message_label.position = Vector2((get_viewport_rect().size.x / 2.0) - 400, 158)
 	
 	if current_turn_index == 0:
 		message_label.text = "SUA VEZ!"
@@ -432,15 +485,19 @@ func _on_nexus_pressed():
 	_play_nexus_effect()
 	
 	if hand_container.get_child_count() == 1:
-		nexus_called = true # Jogador se salva
-		return
-		
+		player_nexus_safe = true # Jogador se salva
+		nexus_called = true
+	
 	# Verifica se algum robô tem 1 carta e pune imediatamente
 	for i in range(opponent_hands.size()):
 		if opponent_hands[i].size() == 1:
-			for c in range(4): opponent_hands[i].append(deck_manager.draw_card())
+			for c in range(4):
+				var card = deck_manager.draw_card()
+				if card: opponent_hands[i].append(card)
 			reorganize_opponent_hand()
-			return
+			# Opcional: mostrar mensagem de punição
+			message_label.text = "NEXUS! Robô " + str(i+1) + " punido!"
+			break # Pune um por vez ou todos? Vou deixar um por enquanto para não ser caótico
 
 func _play_nexus_effect():
 	var fx = Label.new()
@@ -452,9 +509,18 @@ func _play_nexus_effect():
 	fx.add_theme_constant_override("shadow_outline_size", 15)
 	
 	var screen_size = get_viewport_rect().size
+	fx.custom_minimum_size = Vector2(400, 150)
+	fx.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	fx.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	
 	# Centralizar
-	fx.position = Vector2(screen_size.x / 2.0 - 200, screen_size.y / 2.0 - 50)
-	fx.pivot_offset = Vector2(200, 50)
+	fx.position = Vector2(screen_size.x / 2.0 - 200, screen_size.y / 2.0 - 75)
+	fx.pivot_offset = Vector2(200, 75)
+	
+	# Fonte Orbitron
+	var font = load("res://assets/Orbitron.ttf")
+	if font: fx.add_theme_font_override("font", font)
+	
 	$UI.add_child(fx)
 	
 	var tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
@@ -471,8 +537,8 @@ func _show_color_change_message(text_str: String):
 	msg.add_theme_font_size_override("font_size", 22)
 	msg.add_theme_color_override("font_color", Color(1, 0.8, 0.2))
 	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	# Coloca no canto esquerdo, puxado mais para a direita (X de 50 para 110)
-	msg.position = Vector2(110, 260)
+	# Coloca no canto esquerdo
+	msg.position = Vector2(50, 260)
 	$UI.add_child(msg)
 	
 	var tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
@@ -503,12 +569,26 @@ func check_win_condition() -> bool:
 
 func _show_game_over_menu():
 	var btn = Button.new()
-	btn.text = "Jogar Novamente"
-	btn.custom_minimum_size = Vector2(180, 50)
-	btn.add_theme_font_size_override("font_size", 20)
+	btn.text = "JOGAR NOVAMENTE"
+	btn.custom_minimum_size = Vector2(300, 80)
 	
-	# Coloca o botão de recomeçar na lateral esquerda (mesma área do ColorSelector)
-	btn.position = Vector2(140, 200)
+	# Estilo Premium (Glassmorphism)
+	var glass = load("res://resources/GlassStyleBox.tres")
+	if glass:
+		btn.add_theme_stylebox_override("normal", glass)
+		btn.add_theme_stylebox_override("hover", glass)
+		btn.add_theme_stylebox_override("pressed", glass)
+	
+	# Fonte Orbitron e Cores Neon
+	var font = load("res://assets/Orbitron.ttf")
+	if font: btn.add_theme_font_override("font", font)
+	btn.add_theme_font_size_override("font_size", 22)
+	btn.add_theme_color_override("font_color", Color(0.2, 0.8, 1.0)) # Ciano Sci-Fi
+	
+	# Posicionamento (Mais à esquerda do centro)
+	var screen_size = get_viewport_rect().size
+	btn.position = Vector2(screen_size.x / 2.0 - 320, screen_size.y / 2.0 + 80)
+	btn.pivot_offset = Vector2(150, 40)
 	
 	# IMPORTANTE: Permite que o botão seja clicado mesmo com o jogo pausado
 	btn.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -519,3 +599,31 @@ func _show_game_over_menu():
 	)
 	
 	$UI.add_child(btn)
+	
+	# Animação de entrada (Fade-in e leve subida)
+	btn.modulate.a = 0
+	var tween = create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(btn, "modulate:a", 1.0, 0.5)
+	tween.parallel().tween_property(btn, "position:y", btn.position.y - 20, 0.5)
+
+
+func _on_deck_reshuffled():
+	_show_temp_message("Baralho reembaralhado!", Color(0.2, 1.0, 0.5))
+
+func _show_temp_message(text_str: String, color: Color = Color.WHITE):
+	var msg = Label.new()
+	msg.text = text_str
+	msg.add_theme_font_size_override("font_size", 24)
+	msg.add_theme_color_override("font_color", color)
+	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	
+	var screen_size = get_viewport_rect().size
+	msg.position = Vector2(screen_size.x / 2.0 - 150, screen_size.y / 2.0 - 100)
+	msg.custom_minimum_size = Vector2(300, 50)
+	
+	$UI.add_child(msg)
+	
+	var tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(msg, "position:y", msg.position.y - 50, 2.0)
+	tween.tween_property(msg, "modulate:a", 0.0, 2.0)
+	get_tree().create_timer(2.0).timeout.connect(func(): msg.queue_free())

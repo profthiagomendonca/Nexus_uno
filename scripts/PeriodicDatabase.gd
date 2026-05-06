@@ -27,7 +27,7 @@ const ELEMENTS = {
 	26: {"symbol": "Fe", "name": "Ferro", "group": 8, "period": 4, "mass": 55.845, "electronegativity": 1.83, "radius": 126, "color": Color(0.6, 0.6, 0.6), "curiosity": "Presente na hemoglobina do sangue."},
 	29: {"symbol": "Cu", "name": "Cobre", "group": 11, "period": 4, "mass": 63.546, "electronegativity": 1.90, "radius": 128, "color": Color(0.7, 0.4, 0.2), "curiosity": "Excelente condutor de eletricidade."},
 	30: {"symbol": "Zn", "name": "Zinco", "group": 12, "period": 4, "mass": 65.38, "electronegativity": 1.65, "radius": 134, "color": Color(0.5, 0.5, 0.6), "curiosity": "Ajuda no sistema imunológico."},
-	35: {"symbol": "Br", "name": "Bromo", "group": 17, "period": 4, "mass": 79.904, "electronegativity": 2.96, "radius": 114, "color": Color(0.6, 0.1, 0.1), "curiosity": "Único não-metal líquido."},
+	35: {"symbol": "Br", "name": "Bromo", "group": 17, "period": 4, "mass": 79.904, "electronegativity": 2.96, "radius": 114, "color": Color(0.6, 0.1, 0.1), "curiosity": "Único ametal líquido."},
 	47: {"symbol": "Ag", "name": "Prata", "group": 11, "period": 5, "mass": 107.87, "electronegativity": 1.93, "radius": 144, "color": Color(0.9, 0.9, 0.9), "curiosity": "Usada em joias e fotografia."},
 	53: {"symbol": "I", "name": "Iodo", "group": 17, "period": 5, "mass": 126.90, "electronegativity": 2.66, "radius": 133, "color": Color(0.4, 0.0, 0.4), "curiosity": "Essencial para a glândula tireoide."},
 	56: {"symbol": "Ba", "name": "Bário", "group": 2, "period": 6, "mass": 137.33, "electronegativity": 0.89, "radius": 222, "color": Color(0.1, 0.6, 0.1), "curiosity": "Usado em contrastes para exames de raio-X."},
