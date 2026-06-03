@@ -43,7 +43,7 @@ anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
 offset_left = -300.0
-offset_top = -320.0
+offset_top = -420.0
 offset_right = 300.0
 offset_bottom = -20.0
 grow_horizontal = 2
@@ -103,7 +103,15 @@ layout_mode = 2
 size_flags_horizontal = 4
 theme_override_font_sizes/font_size = 28
 theme_override_styles/normal = ExtResource("5_glass")
-text = "INICIAR JOGO"
+text = "JOGAR OFFLINE"
+
+[node name="OnlineBtn" type="Button" parent="Center"]
+custom_minimum_size = Vector2(280, 80)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 28
+theme_override_styles/normal = ExtResource("5_glass")
+text = "JOGAR ONLINE"
 
 [node name="Music" type="AudioStreamPlayer" parent="."]
 stream = ExtResource("6_music")

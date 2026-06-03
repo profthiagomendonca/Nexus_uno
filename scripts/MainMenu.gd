@@ -7,9 +7,11 @@ extends Control
 	$Center/VBox/HBox/Btn4
 ]
 @onready var start_btn = $Center/StartBtn
+@onready var online_btn = $Center/OnlineBtn
 
 var sb_normal: StyleBoxFlat
 var sb_selected: StyleBoxFlat
+var sb_online: StyleBoxFlat
 
 func _ready():
 	# Estilo tecnológico Normal (Neon Branco)
@@ -35,6 +37,18 @@ func _ready():
 	sb_selected.border_color = Color(0.4, 0.9, 1.0, 1.0)
 	sb_selected.shadow_color = Color(0, 0.7, 1.0, 0.6)
 	sb_selected.shadow_size = 15 # Glow Azul Forte
+	
+	# Estilo tecnológico Online (Neon Roxo Premium)
+	sb_online = StyleBoxFlat.new()
+	sb_online.bg_color = Color(0.5, 0.1, 0.9, 0.7)
+	sb_online.set_corner_radius_all(10)
+	sb_online.border_width_left = 3
+	sb_online.border_width_top = 3
+	sb_online.border_width_right = 3
+	sb_online.border_width_bottom = 3
+	sb_online.border_color = Color(0.8, 0.4, 1.0, 1.0)
+	sb_online.shadow_color = Color(0.7, 0.0, 1.0, 0.6)
+	sb_online.shadow_size = 15 # Glow Roxo Forte
 
 	for i in range(buttons.size()):
 		var btn = buttons[i]
@@ -55,6 +69,15 @@ func _ready():
 	start_btn.mouse_exited.connect(_on_btn_hover.bind(start_btn, false))
 	start_btn.pivot_offset = start_btn.size / 2.0
 	
+	# Botão Online com glow roxo
+	online_btn.add_theme_stylebox_override("normal", sb_online)
+	online_btn.add_theme_stylebox_override("hover", sb_online.duplicate())
+	online_btn.get_theme_stylebox("hover").bg_color = Color(0.6, 0.2, 1.0, 0.9)
+	online_btn.pressed.connect(_on_online_pressed)
+	online_btn.mouse_entered.connect(_on_btn_hover.bind(online_btn, true))
+	online_btn.mouse_exited.connect(_on_btn_hover.bind(online_btn, false))
+	online_btn.pivot_offset = online_btn.size / 2.0
+	
 	$Music.finished.connect($Music.play)
 	
 	_play_tech_pulse()
@@ -64,6 +87,10 @@ func _play_tech_pulse():
 	var tween = create_tween().set_loops().set_trans(Tween.TRANS_SINE)
 	tween.tween_property(start_btn, "scale", Vector2(1.03, 1.03), 1.0)
 	tween.tween_property(start_btn, "scale", Vector2(0.97, 0.97), 1.0)
+	
+	var tween_online = create_tween().set_loops().set_trans(Tween.TRANS_SINE)
+	tween_online.tween_property(online_btn, "scale", Vector2(1.03, 1.03), 1.0)
+	tween_online.tween_property(online_btn, "scale", Vector2(0.97, 0.97), 1.0)
 
 func _on_btn_hover(btn: Button, is_hover: bool):
 	var tween = create_tween().set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
@@ -71,8 +98,13 @@ func _on_btn_hover(btn: Button, is_hover: bool):
 		tween.tween_property(btn, "scale", Vector2(1.15, 1.15), 0.5)
 		btn.modulate = Color(1.2, 1.2, 1.5)
 	else:
-		tween.tween_property(btn, "scale", Vector2(1.0, 1.0) if btn.modulate != Color(1.2, 1.2, 1.2) else Vector2(1.2, 1.2), 0.5)
-		btn.modulate = Color.WHITE if btn.get_theme_stylebox("normal") == sb_normal else Color(1.2, 1.2, 1.2)
+		var default_style = btn.get_theme_stylebox("normal")
+		if default_style == sb_selected or default_style == sb_online:
+			tween.tween_property(btn, "scale", Vector2(1.2, 1.2), 0.5)
+			btn.modulate = Color(1.2, 1.2, 1.2)
+		else:
+			tween.tween_property(btn, "scale", Vector2(1.0, 1.0), 0.5)
+			btn.modulate = Color.WHITE
 
 func _on_opponent_selected(count: int):
 	GameSettings.opponent_count = count
@@ -93,3 +125,11 @@ func _on_start_pressed():
 	tween.tween_property(start_btn, "modulate:a", 0.0, 0.6)
 	await get_tree().create_timer(0.6).timeout
 	get_tree().change_scene_to_file("res://scenes/UnoGame.tscn")
+
+func _on_online_pressed():
+	var tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(online_btn, "scale", Vector2(1.8, 1.8), 0.6)
+	tween.tween_property(online_btn, "modulate:a", 0.0, 0.6)
+	await get_tree().create_timer(0.6).timeout
+	get_tree().change_scene_to_file("res://scenes/MultiplayerLobby.tscn")
+

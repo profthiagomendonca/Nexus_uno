@@ -18,6 +18,12 @@ config/icon="res://icon.svg"
 [autoload]
 
 GameSettings="*res://scripts/GameSettings.gd"
+FirebaseManager="*res://scripts/FirebaseManager.gd"
+OrientationManager="*res://scripts/OrientationManager.gd"
+
+[display]
+
+window/handheld/orientation="sensor_landscape"
 
 [physics]
 

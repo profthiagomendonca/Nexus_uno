@@ -1,0 +1,304 @@
+[gd_scene load_steps=8 format=3 uid="uid://c3mmei6vk5rde"]
+
+[ext_resource type="Script" path="res://scripts/UnoOnlineGameManager.gd" id="1_manager"]
+[ext_resource type="Script" path="res://scripts/DeckManager.gd" id="2_deck"]
+[ext_resource type="Texture2D" path="res://assets/Verso_carta.png" id="3_back"]
+[ext_resource type="FontFile" path="res://assets/Orbitron.ttf" id="4_font"]
+[ext_resource type="StyleBox" path="res://resources/GlassStyleBox.tres" id="5_glass"]
+
+[sub_resource type="Gradient" id="Gradient_space"]
+colors = PackedColorArray(0.01, 0.01, 0.02, 1, 0.05, 0.05, 0.1, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_bg"]
+gradient = SubResource("Gradient_space")
+fill_from = Vector2(0.5, 1)
+fill_to = Vector2(0.5, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_table"]
+bg_color = Color(0.02, 0.05, 0.1, 1)
+border_width_left = 20
+border_width_top = 20
+border_width_right = 20
+border_width_bottom = 20
+border_color = Color(0.05, 0.1, 0.2, 1)
+corner_radius_top_left = 100
+corner_radius_top_right = 100
+corner_radius_bottom_right = 100
+corner_radius_bottom_left = 100
+shadow_color = Color(0, 0, 0, 0.5)
+shadow_size = 20
+
+[node name="UnoOnlineGame" type="Node2D" unique_id=1626677209]
+script = ExtResource("1_manager")
+
+[node name="DeckManager" type="Node" parent="." unique_id=1481887957]
+script = ExtResource("2_deck")
+
+[node name="Background" type="CanvasLayer" parent="." unique_id=71852627]
+layer = -1
+
+[node name="BG_Gradient" type="TextureRect" parent="Background" unique_id=698948829]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = SubResource("GradientTexture2D_bg")
+expand_mode = 1
+
+[node name="Table" type="Panel" parent="Background" unique_id=1797899632]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -500.0
+offset_top = -250.0
+offset_right = 500.0
+offset_bottom = 150.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_table")
+
+[node name="UI" type="CanvasLayer" parent="." unique_id=36403469]
+
+[node name="OpponentHand" type="Control" parent="UI" unique_id=1941936624]
+layout_mode = 3
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 150.0
+grow_horizontal = 2
+mouse_filter = 2
+
+[node name="Cards" type="HBoxContainer" parent="UI/OpponentHand" unique_id=1207016124]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="Board" type="Control" parent="UI" unique_id=1380355614]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Piles" type="HBoxContainer" parent="UI/Board" unique_id=59582200]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -140.0
+offset_right = 200.0
+offset_bottom = 100.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 40
+alignment = 1
+
+[node name="DrawPileContainer" type="Control" parent="UI/Board/Piles" unique_id=2058748655]
+custom_minimum_size = Vector2(140, 210)
+layout_mode = 2
+
+[node name="VisualStack" type="TextureRect" parent="UI/Board/Piles/DrawPileContainer" unique_id=448988133]
+modulate = Color(0.1, 0.2, 0.4, 0.5)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 8.0
+offset_bottom = 8.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("3_back")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="DrawPile" type="Button" parent="UI/Board/Piles/DrawPileContainer" unique_id=1273944185]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+flat = true
+
+[node name="BackTexture" type="TextureRect" parent="UI/Board/Piles/DrawPileContainer/DrawPile" unique_id=150976846]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_back")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="DiscardPile" type="Control" parent="UI/Board/Piles" unique_id=162563437]
+custom_minimum_size = Vector2(140, 210)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Hand" type="Control" parent="UI" unique_id=1824334901]
+layout_mode = 3
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -240.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="Cards" type="Control" parent="UI/Hand" unique_id=58239921]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="NexusButton" type="Button" parent="UI" unique_id=1785859385]
+visible = false
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -200.0
+offset_top = -330.0
+offset_right = -20.0
+offset_bottom = -250.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 28
+text = "NEXUS!"
+
+[node name="ColorSelector" type="PanelContainer" parent="UI" unique_id=754958778]
+visible = false
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 50.0
+offset_top = -120.0
+offset_right = 330.0
+offset_bottom = 60.0
+grow_vertical = 2
+theme_override_styles/panel = ExtResource("5_glass")
+
+[node name="VBox" type="VBoxContainer" parent="UI/ColorSelector" unique_id=1313146674]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="UI/ColorSelector/VBox" unique_id=1659944742]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 20
+text = "Escolha uma Família:"
+horizontal_alignment = 1
+
+[node name="Grid" type="GridContainer" parent="UI/ColorSelector/VBox" unique_id=177284670]
+layout_mode = 2
+size_flags_vertical = 3
+columns = 2
+
+[node name="Btn_Yellow" type="Button" parent="UI/ColorSelector/VBox/Grid" unique_id=410051415]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(1, 0.8, 0, 1)
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_styles/normal = ExtResource("5_glass")
+text = "Metais"
+
+[node name="Btn_Green" type="Button" parent="UI/ColorSelector/VBox/Grid" unique_id=614088530]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.2, 0.8, 0.2, 1)
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_styles/normal = ExtResource("5_glass")
+text = "Ametais"
+
+[node name="Btn_Red" type="Button" parent="UI/ColorSelector/VBox/Grid" unique_id=1626699454]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.8, 0.2, 0.2, 1)
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_styles/normal = ExtResource("5_glass")
+text = "Alcalinos"
+
+[node name="Btn_Blue" type="Button" parent="UI/ColorSelector/VBox/Grid" unique_id=53915878]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.2, 0.6, 1, 1)
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_styles/normal = ExtResource("5_glass")
+text = "Halogênios"
+
+[node name="TargetSelector" type="PanelContainer" parent="UI" unique_id=1233308187]
+visible = false
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 50.0
+offset_top = -120.0
+offset_right = 330.0
+offset_bottom = 60.0
+grow_vertical = 2
+theme_override_styles/panel = ExtResource("5_glass")
+
+[node name="VBox" type="VBoxContainer" parent="UI/TargetSelector" unique_id=416378019]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="UI/TargetSelector/VBox" unique_id=399064882]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 20
+text = "Escolha o Alvo da Troca:"
+horizontal_alignment = 1
+
+[node name="Grid" type="GridContainer" parent="UI/TargetSelector/VBox" unique_id=250744917]
+layout_mode = 2
+size_flags_vertical = 3
+columns = 2
+
+[node name="Message" type="Label" parent="UI" unique_id=1919753628]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -400.0
+offset_top = 158.0
+offset_right = 400.0
+offset_bottom = 208.0
+grow_horizontal = 2
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_outline_size = 5
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 24
+text = "Nexus Uno"
+horizontal_alignment = 1
+
+[node name="PollTimer" type="Timer" parent="."]
+unique_name_in_owner = true
+wait_time = 1.5
+
+[connection signal="pressed" from="UI/Board/Piles/DrawPileContainer/DrawPile" to="." method="_on_draw_pile_pressed"]
+[connection signal="pressed" from="UI/NexusButton" to="." method="_on_nexus_pressed"]

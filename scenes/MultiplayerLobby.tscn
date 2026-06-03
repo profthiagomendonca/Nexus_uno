@@ -1,0 +1,252 @@
+[gd_scene load_steps=7 format=3 uid="uid://b822d56a31cde"]
+
+[ext_resource type="Script" path="res://scripts/MultiplayerLobby.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/fundo_menu.png" id="2_bg"]
+[ext_resource type="StyleBox" path="res://resources/GlassStyleBox.tres" id="3_glass"]
+[ext_resource type="FontFile" path="res://assets/Orbitron.ttf" id="4_font"]
+[ext_resource type="AudioStream" path="res://assets/Tema.mp3" id="5_music"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_input"]
+bg_color = Color(0, 0, 0, 0.6)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.8, 1, 0.5)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+content_margin_left = 10
+content_margin_top = 5
+content_margin_right = 10
+content_margin_bottom = 5
+
+[node name="MultiplayerLobby" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="BG" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_bg")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MainPanel" type="PanelContainer" parent="CenterContainer"]
+custom_minimum_size = Vector2(450, 480)
+layout_mode = 2
+theme_override_styles/panel = ExtResource("3_glass")
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/MainPanel"]
+layout_mode = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="SetupScreen" type="VBoxContainer" parent="CenterContainer/MainPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 15
+
+[node name="Title" type="Label" parent="CenterContainer/MainPanel/VBox/SetupScreen"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2, 0.8, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0.4, 0.8, 0.5)
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/shadow_outline_size = 10
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 26
+text = "MULTIPLAYER ONLINE"
+horizontal_alignment = 1
+
+[node name="Spacer" type="Control" parent="CenterContainer/MainPanel/VBox/SetupScreen"]
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+
+[node name="LabelName" type="Label" parent="CenterContainer/MainPanel/VBox/SetupScreen"]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 16
+text = "DIGITE SEU APELIDO:"
+horizontal_alignment = 1
+
+[node name="EditName" type="LineEdit" parent="CenterContainer/MainPanel/VBox/SetupScreen"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 45)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_input")
+placeholder_text = "Apelido"
+alignment = 1
+max_length = 15
+
+[node name="Spacer2" type="Control" parent="CenterContainer/MainPanel/VBox/SetupScreen"]
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+
+[node name="CreateRoomBtn" type="Button" parent="CenterContainer/MainPanel/VBox/SetupScreen"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 55)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.9, 1, 1)
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 18
+theme_override_styles/normal = ExtResource("3_glass")
+text = "CRIAR NOVA SALA"
+
+[node name="OrLabel" type="Label" parent="CenterContainer/MainPanel/VBox/SetupScreen"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 0.5)
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 14
+text = "— OU —"
+horizontal_alignment = 1
+
+[node name="HBox" type="HBoxContainer" parent="CenterContainer/MainPanel/VBox/SetupScreen"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="EditCode" type="LineEdit" parent="CenterContainer/MainPanel/VBox/SetupScreen/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 45)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_input")
+placeholder_text = "Código da Sala"
+alignment = 1
+max_length = 4
+
+[node name="JoinRoomBtn" type="Button" parent="CenterContainer/MainPanel/VBox/SetupScreen/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 45)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.9, 1, 1)
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = ExtResource("3_glass")
+text = "ENTRAR"
+
+[node name="LobbyScreen" type="VBoxContainer" parent="CenterContainer/MainPanel/VBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 15
+
+[node name="RoomTitle" type="Label" parent="CenterContainer/MainPanel/VBox/LobbyScreen"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2, 0.8, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0.4, 0.8, 0.5)
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/shadow_outline_size = 10
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 28
+text = "SALA: 0000"
+horizontal_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="CenterContainer/MainPanel/VBox/LobbyScreen"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 0.6)
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 14
+text = "AGUARDANDO JOGADORES..."
+horizontal_alignment = 1
+
+[node name="PlayersContainer" type="VBoxContainer" parent="CenterContainer/MainPanel/VBox/LobbyScreen"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Spacer" type="Control" parent="CenterContainer/MainPanel/VBox/LobbyScreen"]
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+
+[node name="StartGameBtn" type="Button" parent="CenterContainer/MainPanel/VBox/LobbyScreen"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 55)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 1, 0.6, 1)
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 18
+theme_override_styles/normal = ExtResource("3_glass")
+text = "INICIAR JOGO"
+
+[node name="LeaveRoomBtn" type="Button" parent="CenterContainer/MainPanel/VBox/LobbyScreen"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 45)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.4, 0.4, 1)
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = ExtResource("3_glass")
+text = "SAIR DA SALA"
+
+[node name="BackButton" type="Button" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 45)
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 30.0
+offset_top = -75.0
+offset_right = 180.0
+offset_bottom = -30.0
+grow_vertical = 0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = ExtResource("3_glass")
+text = "VOLTAR"
+
+[node name="MessageLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -300.0
+offset_top = 80.0
+offset_right = 300.0
+offset_bottom = 120.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 18
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Music" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("5_music")
+autoplay = true
+
+[node name="PollTimer" type="Timer" parent="."]
+unique_name_in_owner = true
+wait_time = 1.5
