@@ -107,7 +107,7 @@ func _on_room_updated(data: Dictionary):
 
 func _check_turn_status():
 	if current_turn_index == my_player_index:
-		if finished_players.has(my_player_index):
+		if finished_players.has(my_player_name):
 			# Se você já terminou e ainda é o seu turno, passa a vez
 			_pass_turn()
 			return
@@ -168,7 +168,7 @@ func update_opponents_visual(hands_dict: Dictionary, nexus_safe: Dictionary):
 		var opt_name = player_names[i]
 		var opt_hand = hands_dict.get(opt_name, [])
 		var is_active = (current_turn_index == i)
-		var is_finished = finished_players.has(i)
+		var is_finished = finished_players.has(opt_name)
 		
 		# VBox do oponente
 		var box = VBoxContainer.new()
@@ -350,7 +350,7 @@ func _show_target_selector():
 	var font = load("res://assets/Orbitron.ttf")
 	
 	for i in range(player_names.size()):
-		if i == my_player_index or finished_players.has(i):
+		if i == my_player_index or finished_players.has(player_names[i]):
 			continue
 			
 		var btn = Button.new()
@@ -530,17 +530,18 @@ func check_win_local() -> bool:
 func _push_win_state():
 	var room = FirebaseManager.current_room_data
 	var finished = room.get("finished_players", [])
-	if not finished.has(my_player_index):
-		finished.append(my_player_index)
+	if not finished.has(my_player_name):
+		finished.append(my_player_name)
 		
 	var hands = room.get("player_hands", {})
+	hands[my_player_name] = [] # Garante que a mão do vencedor fique vazia no banco!
 	
 	# Se todos os jogadores (ou todos menos um) terminaram
 	if finished.size() >= total_players - 1:
 		# Fim de Jogo!
 		var update = {
 			"status": "ended",
-			"winner": player_names[finished[0]],
+			"winner": finished[0],
 			"finished_players": finished,
 			"player_hands": hands,
 			"current_top_card": FirebaseManager.serialize_card(current_top_card),
@@ -548,7 +549,7 @@ func _push_win_state():
 			"last_action": {
 				"type": "win",
 				"player": my_player_name,
-				"message": "Fim de jogo! %s venceu a partida!" % player_names[finished[0]]
+				"message": "Fim de jogo! %s venceu a partida!" % finished[0]
 			}
 		}
 		await FirebaseManager.update_room_state(update)
@@ -753,7 +754,7 @@ func get_next_turn_index(current_idx: int, dir: int, players_count: int, finishe
 	if next_idx < 0:
 		next_idx = players_count - 1
 	var loops = 0
-	while finished.has(next_idx) and loops < players_count:
+	while finished.has(player_names[next_idx]) and loops < players_count:
 		next_idx = (next_idx + dir) % players_count
 		if next_idx < 0:
 			next_idx = players_count - 1

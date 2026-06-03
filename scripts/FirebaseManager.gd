@@ -158,6 +158,11 @@ func update_room_state(data: Dictionary) -> bool:
 	var response = await firebase_request(path, HTTPClient.METHOD_PATCH, data)
 	if response is Dictionary and response.has("error"):
 		return false
+		
+	# Atualizar os dados locais imediatamente para não ficar desatualizado
+	for key in data:
+		current_room_data[key] = data[key]
+		
 	return true
 
 # Consulta o estado atual da sala
