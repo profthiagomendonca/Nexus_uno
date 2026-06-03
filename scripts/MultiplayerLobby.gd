@@ -135,7 +135,7 @@ func _on_room_updated(data: Dictionary):
 	for child in players_container.get_children():
 		child.queue_free()
 		
-	var players = data.get("players", [])
+	var players = FirebaseManager.clean_array(data.get("players", []))
 	
 	# Exibir jogadores com estilo premium
 	for i in range(players.size()):
@@ -218,7 +218,7 @@ func create_initial_game_state() -> Dictionary:
 	temp_deck_manager.queue_free()
 	
 	# Distribuir mãos
-	var players = FirebaseManager.current_room_data.get("players", [])
+	var players = FirebaseManager.clean_array(FirebaseManager.current_room_data.get("players", []))
 	var player_hands = {}
 	
 	for player in players:

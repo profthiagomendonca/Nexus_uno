@@ -14,6 +14,25 @@ signal room_updated(data: Dictionary)
 signal room_not_found
 signal game_started
 
+# Função auxiliar para limpar e ordenar arrays vindos do Firebase (que podem vir como dicionários)
+func clean_array(val) -> Array:
+	if val == null:
+		return []
+	if val is Array:
+		return val
+	if val is Dictionary:
+		var keys = val.keys()
+		var int_keys = []
+		for k in keys:
+			if str(k).is_valid_int():
+				int_keys.append(str(k).to_int())
+		int_keys.sort()
+		var arr = []
+		for k_int in int_keys:
+			arr.append(val[str(k_int)])
+		return arr
+	return []
+
 func _ready():
 	# Configurar o processamento mesmo quando pausado se necessário
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -38,7 +57,7 @@ func firebase_request(path: String, method: HTTPClient.Method, data: Variant = n
 			http_request.queue_free()
 			attempt += 1
 			if attempt < max_retries:
-				await get_tree().create_timer(0.3).timeout
+				await (Engine.get_main_loop() as SceneTree).create_timer(0.3).timeout
 			continue
 			
 		var result = await http_request.request_completed
@@ -59,12 +78,12 @@ func firebase_request(path: String, method: HTTPClient.Method, data: Variant = n
 			else:
 				attempt += 1
 				if attempt < max_retries:
-					await get_tree().create_timer(0.3).timeout
+					await (Engine.get_main_loop() as SceneTree).create_timer(0.3).timeout
 				continue
 		else:
 			attempt += 1
 			if attempt < max_retries:
-				await get_tree().create_timer(0.3).timeout
+				await (Engine.get_main_loop() as SceneTree).create_timer(0.3).timeout
 			else:
 				return {"error": "Erro HTTP", "code": response_code}
 				
@@ -116,15 +135,17 @@ func join_room(target_code: String, joining_name: String) -> bool:
 		room_code = ""
 		return false
 		
-	var players = room.get("players", [])
+	var players = clean_array(room.get("players", []))
 	if players.size() >= 4:
 		room_code = ""
 		return false
 		
 	players.append(joining_name)
 	
+	# Usar PUT para salvar a lista de jogadores limpa para truncar corretamente no Firebase
+	await firebase_request("rooms/" + room_code + "/players.json", HTTPClient.METHOD_PUT, players)
+	
 	var update_data = {
-		"players": players,
 		"state_version": room.get("state_version", 1) + 1
 	}
 	
@@ -148,10 +169,13 @@ func leave_room():
 		# Player normal se remove da lista
 		var room = await firebase_request(path, HTTPClient.METHOD_GET)
 		if room is Dictionary and not room.has("error"):
-			var players = room.get("players", [])
+			var players = clean_array(room.get("players", []))
 			players.erase(player_name)
+			
+			# Salva a lista de jogadores limpa via PUT para truncar corretamente
+			await firebase_request("rooms/" + room_code + "/players.json", HTTPClient.METHOD_PUT, players)
+			
 			var update_data = {
-				"players": players,
 				"state_version": room.get("state_version", 1) + 1
 			}
 			await firebase_request(path, HTTPClient.METHOD_PATCH, update_data)
@@ -196,6 +220,22 @@ func fetch_room_state() -> Dictionary:
 	if response is Dictionary:
 		if response.has("error"):
 			return {}
+		
+		# Limpar arrays conhecidos para evitar que o Firebase os retorne como Dicionários
+		if response.has("players"):
+			response["players"] = clean_array(response["players"])
+		if response.has("finished_players"):
+			response["finished_players"] = clean_array(response["finished_players"])
+		if response.has("deck"):
+			response["deck"] = clean_array(response["deck"])
+		if response.has("discard_pile"):
+			response["discard_pile"] = clean_array(response["discard_pile"])
+		
+		# Limpar também as mãos individuais dos jogadores em player_hands
+		if response.has("player_hands") and response["player_hands"] is Dictionary:
+			var hands = response["player_hands"]
+			for p_name in hands:
+				hands[p_name] = clean_array(hands[p_name])
 		
 		# Detecta transição de status de "waiting" para "playing" para emitir sinal
 		var old_status = current_room_data.get("status", "waiting")
@@ -255,9 +295,10 @@ func serialize_deck(deck: Array) -> Array:
 		serialized.append(serialize_card(card))
 	return serialized
 
-func deserialize_deck(serialized_deck: Array) -> Array:
+func deserialize_deck(serialized_deck: Variant) -> Array:
+	var clean_deck_arr = clean_array(serialized_deck)
 	var deck = []
-	for card_dict in serialized_deck:
+	for card_dict in clean_deck_arr:
 		if card_dict is Dictionary:
 			deck.append(deserialize_card(card_dict))
 	return deck

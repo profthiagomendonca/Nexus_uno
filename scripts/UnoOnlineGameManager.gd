@@ -71,7 +71,7 @@ func _on_room_updated(data: Dictionary):
 		return
 		
 	# Mapear jogadores
-	player_names = data.get("players", [])
+	player_names = FirebaseManager.clean_array(data.get("players", []))
 	total_players = player_names.size()
 	my_player_index = player_names.find(my_player_name)
 	current_turn_index = data.get("current_turn_index", 0)
@@ -79,7 +79,7 @@ func _on_room_updated(data: Dictionary):
 	# Sincronizar variáveis de partida
 	draw_stack = data.get("draw_stack", 0)
 	game_direction = data.get("game_direction", 1)
-	finished_players = data.get("finished_players", [])
+	finished_players = FirebaseManager.clean_array(data.get("finished_players", []))
 	
 	# Sincronizar carta do topo
 	current_top_card = FirebaseManager.deserialize_card(data.get("current_top_card", {}))
@@ -527,10 +527,10 @@ func _pass_turn():
 	local_action_in_progress = false
 
 func draw_card_from_deck(room: Dictionary) -> CardData:
-	var deck = room.get("deck", [])
+	var deck = FirebaseManager.clean_array(room.get("deck", []))
 	if deck.is_empty():
 		# Reembaralhar pilha de descarte (menos o topo)
-		var discard = room.get("discard_pile", [])
+		var discard = FirebaseManager.clean_array(room.get("discard_pile", []))
 		var top = room.get("current_top_card", {})
 		var new_deck = []
 		for card_dict in discard:
@@ -553,7 +553,7 @@ func check_win_local() -> bool:
 
 func _push_win_state():
 	var room = FirebaseManager.current_room_data
-	var finished = room.get("finished_players", [])
+	var finished = FirebaseManager.clean_array(room.get("finished_players", []))
 	if not finished.has(my_player_name):
 		finished.append(my_player_name)
 		
