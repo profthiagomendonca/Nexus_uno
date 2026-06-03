@@ -376,7 +376,12 @@ func _on_target_player_selected(target_name: String):
 	var room = FirebaseManager.current_room_data
 	var hands = room.get("player_hands", {})
 	
-	var temp = hands[my_player_name]
+	# Obter a mão atual do jogador local (sem a carta de troca já jogada)
+	var my_hand_serialized = []
+	for card_ui in hand_container.get_children():
+		my_hand_serialized.append(FirebaseManager.serialize_card(card_ui.get("data")))
+		
+	var temp = my_hand_serialized
 	hands[my_player_name] = hands[target_name]
 	hands[target_name] = temp
 	
