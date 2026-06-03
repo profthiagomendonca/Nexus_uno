@@ -96,7 +96,7 @@ theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_fonts/font = ExtResource("4_font")
 theme_override_font_sizes/font_size = 16
 theme_override_styles/normal = SubResource("StyleBoxFlat_input")
-placeholder_text = "Apelido"
+placeholder_text = "nome_jogador"
 alignment = 1
 max_length = 15
 

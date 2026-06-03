@@ -18,41 +18,57 @@ func _ready():
 	# Configurar o processamento mesmo quando pausado se necessário
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
-# Função genérica para chamadas HTTP
+# Função genérica para chamadas HTTP com suporte a retentativas automáticas
 func firebase_request(path: String, method: HTTPClient.Method, data: Variant = null) -> Variant:
-	var http_request = HTTPRequest.new()
-	add_child(http_request)
+	var max_retries = 3
+	var attempt = 0
 	
-	var url = DATABASE_URL + path
-	var headers = ["Content-Type: application/json"]
-	var json_str = ""
-	if data != null:
-		json_str = JSON.stringify(data)
+	while attempt < max_retries:
+		var http_request = HTTPRequest.new()
+		add_child(http_request)
 		
-	var error = http_request.request(url, headers, method, json_str)
-	if error != OK:
+		var url = DATABASE_URL + path
+		var headers = ["Content-Type: application/json"]
+		var json_str = ""
+		if data != null:
+			json_str = JSON.stringify(data)
+			
+		var error = http_request.request(url, headers, method, json_str)
+		if error != OK:
+			http_request.queue_free()
+			attempt += 1
+			if attempt < max_retries:
+				await get_tree().create_timer(0.3).timeout
+			continue
+			
+		var result = await http_request.request_completed
+		var response_code = result[1]
+		var response_headers = result[2]
+		var body = result[3]
+		
 		http_request.queue_free()
-		return {"error": "Falha ao iniciar requisição"}
 		
-	var result = await http_request.request_completed
-	var response_code = result[1]
-	var response_headers = result[2]
-	var body = result[3]
-	
-	http_request.queue_free()
-	
-	if response_code >= 200 and response_code < 300:
-		var response_str = body.get_string_from_utf8()
-		if response_str == "null" or response_str == "":
-			return null
-		var json = JSON.new()
-		var parse_err = json.parse(response_str)
-		if parse_err == OK:
-			return json.data
+		if response_code >= 200 and response_code < 300:
+			var response_str = body.get_string_from_utf8()
+			if response_str == "null" or response_str == "":
+				return null
+			var json = JSON.new()
+			var parse_err = json.parse(response_str)
+			if parse_err == OK:
+				return json.data
+			else:
+				attempt += 1
+				if attempt < max_retries:
+					await get_tree().create_timer(0.3).timeout
+				continue
 		else:
-			return {"error": "Falha ao processar JSON"}
-	else:
-		return {"error": "Erro HTTP", "code": response_code}
+			attempt += 1
+			if attempt < max_retries:
+				await get_tree().create_timer(0.3).timeout
+			else:
+				return {"error": "Erro HTTP", "code": response_code}
+				
+	return {"error": "Falha de conexão após retentativas"}
 
 # --- Lógica de Lobbies/Salas ---
 

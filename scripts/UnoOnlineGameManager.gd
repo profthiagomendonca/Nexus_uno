@@ -54,6 +54,9 @@ func _on_poll_timeout():
 	FirebaseManager.fetch_room_state()
 
 func _on_room_updated(data: Dictionary):
+	if local_action_in_progress or waiting_for_selection:
+		return
+		
 	var server_version = data.get("state_version", 0)
 	if server_version <= last_seen_version:
 		return # Evitar redesenhar se já estamos atualizados
@@ -106,12 +109,16 @@ func _on_room_updated(data: Dictionary):
 	_check_turn_status()
 
 func _check_turn_status():
-	if current_turn_index == my_player_index:
-		if finished_players.has(my_player_name):
-			# Se você já terminou e ainda é o seu turno, passa a vez
+	if finished_players.has(my_player_name):
+		nexus_button.hide()
+		if current_turn_index == my_player_index:
 			_pass_turn()
-			return
-		
+		else:
+			var active_player = player_names[current_turn_index] if current_turn_index < player_names.size() else "Outro"
+			message_label.text = "Você terminou! Assistindo à partida... (Vez de %s...)" % active_player
+		return
+
+	if current_turn_index == my_player_index:
 		# Mostrar botão de Nexus se você estiver com 2 cartas e for jogar 1
 		var my_cards_count = hand_container.get_child_count()
 		if my_cards_count == 2:
@@ -391,7 +398,10 @@ func _on_target_player_selected(target_name: String):
 		}
 	}
 	
-	await FirebaseManager.update_room_state(update)
+	var success = await FirebaseManager.update_room_state(update)
+	if not success:
+		_handle_update_failure()
+		return
 	local_action_in_progress = false
 
 func _on_draw_pile_pressed():
@@ -430,7 +440,10 @@ func _on_draw_pile_pressed():
 			}
 		}
 		
-		await FirebaseManager.update_room_state(update)
+		var success = await FirebaseManager.update_room_state(update)
+		if not success:
+			_handle_update_failure()
+			return
 		local_action_in_progress = false
 	else:
 		if has_drawn_this_turn:
@@ -462,7 +475,10 @@ func _on_draw_pile_pressed():
 							"message": "%s comprou uma carta." % my_player_name
 						}
 					}
-					await FirebaseManager.update_room_state(update)
+					var success = await FirebaseManager.update_room_state(update)
+					if not success:
+						_handle_update_failure()
+						return
 					local_action_in_progress = false
 				else:
 					# Passar automaticamente se não der match
@@ -481,7 +497,10 @@ func _on_draw_pile_pressed():
 							"message": "%s comprou e passou a vez." % my_player_name
 						}
 					}
-					await FirebaseManager.update_room_state(update)
+					var success = await FirebaseManager.update_room_state(update)
+					if not success:
+						_handle_update_failure()
+						return
 					local_action_in_progress = false
 			else:
 				local_action_in_progress = false
@@ -499,7 +518,10 @@ func _pass_turn():
 			"message": "%s passou a vez." % my_player_name
 		}
 	}
-	await FirebaseManager.update_room_state(update)
+	var success = await FirebaseManager.update_room_state(update)
+	if not success:
+		_handle_update_failure()
+		return
 	local_action_in_progress = false
 
 func draw_card_from_deck(room: Dictionary) -> CardData:
@@ -552,7 +574,10 @@ func _push_win_state():
 				"message": "Fim de jogo! %s venceu a partida!" % finished[0]
 			}
 		}
-		await FirebaseManager.update_room_state(update)
+		var success = await FirebaseManager.update_room_state(update)
+		if not success:
+			_handle_update_failure()
+			return
 	else:
 		# Próximo turno
 		current_turn_index = get_next_turn_index(current_turn_index, game_direction, total_players, finished)
@@ -568,7 +593,10 @@ func _push_win_state():
 				"message": "%s acabou suas cartas!" % my_player_name
 			}
 		}
-		await FirebaseManager.update_room_state(update)
+		var success = await FirebaseManager.update_room_state(update)
+		if not success:
+			_handle_update_failure()
+			return
 		
 	local_action_in_progress = false
 
@@ -603,7 +631,10 @@ func _push_play_action(card: CardData, action_desc: String):
 		}
 	}
 	
-	await FirebaseManager.update_room_state(update)
+	var success = await FirebaseManager.update_room_state(update)
+	if not success:
+		_handle_update_failure()
+		return
 	local_action_in_progress = false
 
 # --- A Regra do Nexus! ---
@@ -625,7 +656,10 @@ func _on_nexus_pressed():
 				"message": "NEXUS! %s declarou uma carta restando!" % my_player_name
 			}
 		}
-		await FirebaseManager.update_room_state(update)
+		var success = await FirebaseManager.update_room_state(update)
+		if not success:
+			_handle_update_failure()
+			return
 		return
 		
 	# Caso B: Denunciar outro jogador com 1 carta vulnerável
@@ -656,7 +690,10 @@ func _on_nexus_pressed():
 					"message": "NEXUS! %s puniu %s por não avisar (+4)!" % [my_player_name, player]
 				}
 			}
-			await FirebaseManager.update_room_state(update)
+			var success = await FirebaseManager.update_room_state(update)
+			if not success:
+				_handle_update_failure()
+				return
 			break
 
 func _play_nexus_effect(who: String):
@@ -760,3 +797,17 @@ func get_next_turn_index(current_idx: int, dir: int, players_count: int, finishe
 			next_idx = players_count - 1
 		loops += 1
 	return next_idx
+
+func _handle_update_failure():
+	# Forçar reversão local em caso de erro no salvamento do estado
+	message_label.text = "Falha de rede! Sincronizando com o servidor..."
+	local_action_in_progress = false
+	waiting_for_selection = false
+	if color_selector:
+		color_selector.hide()
+	if target_selector:
+		target_selector.hide()
+		
+	# Espera um curto intervalo e puxa a verdade do servidor para restaurar o estado visual correto
+	await get_tree().create_timer(1.0).timeout
+	FirebaseManager.fetch_room_state()

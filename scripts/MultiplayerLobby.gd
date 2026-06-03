@@ -33,7 +33,7 @@ func _ready():
 	# Restaurar último apelido se houver
 	edit_name.text = GameSettings.get("player_name_cache") if "player_name_cache" in GameSettings else ""
 	if edit_name.text.is_empty():
-		edit_name.text = "Nome_Jogador"
+		edit_name.text = "nome_jogador"
 		
 	# Conectar sinais dos botões
 	back_button.pressed.connect(_on_back_pressed)
