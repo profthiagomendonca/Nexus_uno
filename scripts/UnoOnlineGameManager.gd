@@ -28,6 +28,7 @@ var waiting_for_selection: bool = false
 var has_drawn_this_turn: bool = false
 var last_seen_version: int = -1
 var local_action_in_progress: bool = false
+var my_nexus_called: bool = false
 
 func _ready():
 	my_player_name = FirebaseManager.player_name
@@ -119,21 +120,19 @@ func _check_turn_status():
 		return
 
 	if current_turn_index == my_player_index:
-		# Mostrar botão de Nexus se você estiver com 2 cartas e for jogar 1
-		var my_cards_count = hand_container.get_child_count()
-		if my_cards_count == 2:
-			nexus_button.show()
-		else:
-			nexus_button.hide()
-			
 		if draw_stack > 0:
 			message_label.text = "SUA VEZ! Acumule com +2/+4 ou compre o stack (+%d)!" % draw_stack
 		else:
 			message_label.text = "SUA VEZ!"
 	else:
-		nexus_button.hide()
 		var active_player = player_names[current_turn_index] if current_turn_index < player_names.size() else "Outro"
 		message_label.text = "Vez de %s..." % active_player
+		
+	# Atualizar visibilidade do botão Nexus de forma centralizada
+	if _should_show_nexus_button():
+		nexus_button.show()
+	else:
+		nexus_button.hide()
 
 func update_board_visual():
 	for child in discard_pile_view.get_children():
@@ -207,9 +206,7 @@ func update_opponents_visual(hands_dict: Dictionary, nexus_safe: Dictionary):
 		name_label.add_theme_font_size_override("font_size", 14)
 		name_panel.add_child(name_label)
 		
-		# Mostrar botão de denúncia se estiver com 1 carta e não chamou Nexus
-		if opt_hand.size() == 1 and not nexus_safe.get(opt_name, false) and not is_finished:
-			nexus_button.show() # Libera o botão geral para você clicar
+		# Visibilidade do botão Nexus é gerenciada de forma centralizada em _check_turn_status()
 			
 		# Cartas
 		var stack_area = Control.new()
@@ -611,10 +608,13 @@ func _push_play_action(card: CardData, action_desc: String):
 		
 	hands[my_player_name] = current_hand_serialized
 	
-	# Se sobrou 1 carta e não apertou Nexus, reseta a segurança para falsos
+	# Se sobrou 1 carta, define se estamos salvos pelo botão clicado previamente
 	var nexus_safe = room.get("nexus_safe", {})
-	if current_hand_serialized.size() != 1:
+	if current_hand_serialized.size() == 1:
+		nexus_safe[my_player_name] = my_nexus_called
+	else:
 		nexus_safe[my_player_name] = false
+	my_nexus_called = false
 		
 	var update = {
 		"player_hands": hands,
@@ -645,30 +645,33 @@ func _on_nexus_pressed():
 	var hands = room.get("player_hands", {})
 	var nexus_safe = room.get("nexus_safe", {})
 	
-	# Caso A: Você tem 1 carta na mão e quer se salvar
-	if hand_container.get_child_count() == 1:
-		nexus_safe[my_player_name] = true
-		var update = {
-			"nexus_safe": nexus_safe,
-			"last_action": {
-				"type": "nexus",
-				"player": my_player_name,
-				"message": "NEXUS! %s declarou uma carta restando!" % my_player_name
-			}
-		}
-		var success = await FirebaseManager.update_room_state(update)
-		if not success:
-			_handle_update_failure()
+	# Caso A: Você tem 1 ou 2 cartas na mão e quer se salvar
+	if hand_container.get_child_count() <= 2:
+		if hand_container.get_child_count() == 2:
+			my_nexus_called = true
+			_play_nexus_effect(my_player_name)
 			return
-		return
-		
+		else:
+			nexus_safe[my_player_name] = true
+			var update = {
+				"nexus_safe": nexus_safe,
+				"last_action": {
+					"type": "nexus",
+					"player": my_player_name,
+					"message": "NEXUS! %s declarou uma carta restando!" % my_player_name
+				}
+			}
+			var success = await FirebaseManager.update_room_state(update)
+			if not success:
+				_handle_update_failure()
+			return
+			
 	# Caso B: Denunciar outro jogador com 1 carta vulnerável
 	for player in player_names:
 		if player == my_player_name:
 			continue
 		var player_hand = hands.get(player, [])
 		if player_hand.size() == 1 and not nexus_safe.get(player, false):
-			# Pune o jogador com +4 cartas!
 			show_message("Você pegou %s sem Nexus!" % player)
 			
 			for i in range(4):
@@ -677,7 +680,7 @@ func _on_nexus_pressed():
 					player_hand.append(FirebaseManager.serialize_card(card))
 			
 			hands[player] = player_hand
-			nexus_safe[player] = true # Fica seguro agora da punição
+			nexus_safe[player] = true
 			
 			var update = {
 				"player_hands": hands,
@@ -811,3 +814,30 @@ func _handle_update_failure():
 	# Espera um curto intervalo e puxa a verdade do servidor para restaurar o estado visual correto
 	await get_tree().create_timer(1.0).timeout
 	FirebaseManager.fetch_room_state()
+
+func _should_show_nexus_button() -> bool:
+	if finished_players.has(my_player_name):
+		return false
+		
+	# Caso 1: É o meu turno e tenho exatamente 2 cartas (vou jogar a penúltima)
+	if current_turn_index == my_player_index and hand_container.get_child_count() == 2:
+		return true
+		
+	# Caso 2: Tenho exatamente 1 carta na mão (já joguei e quero me salvar)
+	if hand_container.get_child_count() == 1:
+		var room = FirebaseManager.current_room_data
+		var nexus_safe = room.get("nexus_safe", {})
+		if not nexus_safe.get(my_player_name, false):
+			return true
+			
+	# Caso 3: Algum oponente está com 1 carta na mão e não está seguro (podemos punir)
+	var room = FirebaseManager.current_room_data
+	var hands = room.get("player_hands", {})
+	var nexus_safe = room.get("nexus_safe", {})
+	for player in player_names:
+		if player != my_player_name and not finished_players.has(player):
+			var player_hand = hands.get(player, [])
+			if player_hand.size() == 1 and not nexus_safe.get(player, false):
+				return true
+				
+	return false
