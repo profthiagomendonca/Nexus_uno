@@ -1,5 +1,7 @@
 # Nexus Uno: Elementos Químicos em Jogo
 
+### 🎮 Jogue Online agora: [nexus-uno.netlify.app](https://nexus-uno.netlify.app)
+
 **Nexus Uno** é um jogo de cartas digital estratégico e educativo desenvolvido na engine **Godot 4**. Inspirado nas mecânicas clássicas de jogos de descarte (como o UNO), o projeto transforma o aprendizado da Tabela Periódica em uma experiência competitiva, dinâmica e imersiva com temática de ficção científica (Sci-Fi).
 
 ### 🎯 Objetivo Pedagógico
