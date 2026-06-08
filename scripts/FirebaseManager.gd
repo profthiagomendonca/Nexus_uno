@@ -200,8 +200,13 @@ func update_room_state(data: Dictionary) -> bool:
 		return false
 		
 	# Atualizar os dados locais imediatamente para não ficar desatualizado
+	var old_status = current_room_data.get("status", "waiting")
 	for key in data:
 		current_room_data[key] = data[key]
+	var new_status = current_room_data.get("status", "waiting")
+	
+	if old_status == "waiting" and new_status == "playing":
+		emit_signal("game_started")
 		
 	return true
 
