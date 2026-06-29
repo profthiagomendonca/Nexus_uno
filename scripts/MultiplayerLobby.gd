@@ -180,14 +180,22 @@ func _on_room_not_found():
 		show_message("A sala foi fechada pelo criador.", Color(1.0, 0.4, 0.4))
 
 func _on_start_game_pressed():
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("console.log('Host: Start game pressed')")
 	start_game_btn.disabled = true
 	show_message("Inicializando partida online...", Color(0.2, 1.0, 0.5))
 	
 	# Gerar estado de jogo inicial (Somente o Host faz isso)
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("console.log('Host: Creating initial game state')")
 	var game_state = create_initial_game_state()
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("console.log('Host: Initial game state created')")
 	
 	# Atualizar no Firebase
 	var success = await FirebaseManager.update_room_state(game_state)
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("console.log('Host: update_room_state success=' + '" + str(success) + "')")
 	if success:
 		_on_game_started()
 	else:
@@ -195,12 +203,16 @@ func _on_start_game_pressed():
 		start_game_btn.disabled = false
 
 func _on_game_started():
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("console.log('Host: _on_game_started triggered=' + '" + str(game_started_triggered) + "')")
 	if game_started_triggered:
 		return
 	game_started_triggered = true
 	poll_timer.stop() # Parar polling do lobby
 	# Mudar para a cena de jogo online
-	get_tree().change_scene_to_file("res://scenes/UnoOnlineGame.tscn")
+	var err = get_tree().change_scene_to_file("res://scenes/UnoOnlineGame.tscn")
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("console.log('Host: change_scene_to_file code=' + '" + str(err) + "')")
 
 func show_message(text: String, color: Color = Color.WHITE):
 	message_label.text = text
