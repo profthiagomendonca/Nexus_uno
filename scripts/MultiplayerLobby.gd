@@ -16,6 +16,7 @@ extends Control
 
 var style_player: StyleBoxFlat
 var font_orbitron: FontFile
+var game_started_triggered: bool = false
 
 func _ready():
 	# Configurar estilo premium para a lista de jogadores
@@ -187,11 +188,16 @@ func _on_start_game_pressed():
 	
 	# Atualizar no Firebase
 	var success = await FirebaseManager.update_room_state(game_state)
-	if not success:
+	if success:
+		_on_game_started()
+	else:
 		show_message("Erro ao iniciar jogo. Tente novamente.", Color(1.0, 0.4, 0.4))
 		start_game_btn.disabled = false
 
 func _on_game_started():
+	if game_started_triggered:
+		return
+	game_started_triggered = true
 	poll_timer.stop() # Parar polling do lobby
 	# Mudar para a cena de jogo online
 	get_tree().change_scene_to_file("res://scenes/UnoOnlineGame.tscn")
