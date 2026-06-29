@@ -50,12 +50,12 @@ func firebase_request(path: String, method: HTTPClient.Method, data: Variant = n
 		var request_method = method
 		
 		# Em navegadores de exportações Web (HTML5), métodos PATCH e DELETE podem ser bloqueados ou travar.
-		# O Firebase suporta a substituição do método via parâmetro de consulta "?method=PATCH" ou "?method=DELETE" usando POST.
+		# O Firebase suporta a substituição do método via parâmetro de consulta "?x-http-method-override=PATCH" ou "?x-http-method-override=DELETE" usando POST.
 		if request_method == HTTPClient.METHOD_PATCH:
-			url += "?method=PATCH"
+			url += "?x-http-method-override=PATCH"
 			request_method = HTTPClient.METHOD_POST
 		elif request_method == HTTPClient.METHOD_DELETE:
-			url += "?method=DELETE"
+			url += "?x-http-method-override=DELETE"
 			request_method = HTTPClient.METHOD_POST
 			
 		var headers = ["Content-Type: application/json"]
