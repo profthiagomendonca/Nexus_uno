@@ -204,9 +204,9 @@ func _on_game_started():
 		return
 	game_started_triggered = true
 	poll_timer.stop() # Parar polling do lobby
-	# Mudar para a cena de jogo online
-	var err = get_tree().change_scene_to_file("res://scenes/UnoOnlineGame.tscn")
-	print("Host: change_scene_to_file code=", err)
+	# Mudar para a cena de jogo online de forma diferida (evita quebras de corrotinas/stack)
+	get_tree().call_deferred("change_scene_to_file", "res://scenes/UnoOnlineGame.tscn")
+	print("Host: change_scene_to_file deferred call sent")
 
 func show_message(text: String, color: Color = Color.WHITE):
 	message_label.text = text

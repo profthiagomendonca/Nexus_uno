@@ -59,6 +59,11 @@ func firebase_request(path: String, method: HTTPClient.Method, data: Variant = n
 			request_method = HTTPClient.METHOD_POST
 			
 		var headers = ["Content-Type: application/json"]
+		if method == HTTPClient.METHOD_PATCH:
+			headers.append("X-HTTP-Method-Override: PATCH")
+		elif method == HTTPClient.METHOD_DELETE:
+			headers.append("X-HTTP-Method-Override: DELETE")
+			
 		var json_str = ""
 		if data != null:
 			json_str = JSON.stringify(data)
