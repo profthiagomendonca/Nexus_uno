@@ -47,18 +47,27 @@ func firebase_request(path: String, method: HTTPClient.Method, data: Variant = n
 		add_child(http_request)
 		
 		var url = DATABASE_URL + path
+		var request_method = method
+		
+		# Em navegadores de exportações Web (HTML5), métodos PATCH e DELETE podem ser bloqueados ou travar.
+		# O Firebase suporta a substituição do método via parâmetro de consulta "?method=PATCH" ou "?method=DELETE" usando POST.
+		if request_method == HTTPClient.METHOD_PATCH:
+			url += "?method=PATCH"
+			request_method = HTTPClient.METHOD_POST
+		elif request_method == HTTPClient.METHOD_DELETE:
+			url += "?method=DELETE"
+			request_method = HTTPClient.METHOD_POST
+			
 		var headers = ["Content-Type: application/json"]
 		var json_str = ""
 		if data != null:
 			json_str = JSON.stringify(data)
 			
-		if OS.has_feature("web"):
-			JavaScriptBridge.eval("console.log('firebase_request: Sending request ' + '" + path + "' + ', method=' + str(" + str(method) + ") + ', attempt=' + str(" + str(attempt) + "))")
+		print("firebase_request: Sending request to path: ", path, " | original_method: ", method, " | actual_method: ", request_method, " | attempt: ", attempt)
 			
-		var error = http_request.request(url, headers, method, json_str)
+		var error = http_request.request(url, headers, request_method, json_str)
 		if error != OK:
-			if OS.has_feature("web"):
-				JavaScriptBridge.eval("console.log('firebase_request: request error=' + str(" + str(error) + "))")
+			print("firebase_request: request failed to initiate. error: ", error)
 			http_request.queue_free()
 			attempt += 1
 			if attempt < max_retries:
@@ -70,8 +79,7 @@ func firebase_request(path: String, method: HTTPClient.Method, data: Variant = n
 		var response_headers = result[2]
 		var body = result[3]
 		
-		if OS.has_feature("web"):
-			JavaScriptBridge.eval("console.log('firebase_request: request completed, response_code=' + str(" + str(response_code) + "))")
+		print("firebase_request: request completed. response_code: ", response_code)
 			
 		http_request.queue_free()
 		
@@ -195,8 +203,7 @@ func leave_room():
 
 # Atualiza a sala inteira (ou campos específicos)
 func update_room_state(data: Dictionary) -> bool:
-	if OS.has_feature("web"):
-		JavaScriptBridge.eval("console.log('FirebaseManager: update_room_state called')")
+	print("FirebaseManager: update_room_state called")
 	if room_code.is_empty():
 		return false
 	
@@ -205,15 +212,12 @@ func update_room_state(data: Dictionary) -> bool:
 	data["state_version"] = next_version
 	
 	var path = "rooms/" + room_code + ".json"
-	if OS.has_feature("web"):
-		JavaScriptBridge.eval("console.log('FirebaseManager: sending PATCH request to path: ' + '" + path + "')")
+	print("FirebaseManager: sending PATCH request to path: ", path)
 	var response = await firebase_request(path, HTTPClient.METHOD_PATCH, data)
-	if OS.has_feature("web"):
-		JavaScriptBridge.eval("console.log('FirebaseManager: PATCH request complete')")
+	print("FirebaseManager: PATCH request complete")
 		
 	if response is Dictionary and response.has("error"):
-		if OS.has_feature("web"):
-			JavaScriptBridge.eval("console.log('FirebaseManager: PATCH request returned error')")
+		print("FirebaseManager: PATCH request returned error: ", response.get("error"))
 		return false
 		
 	# Atualizar os dados locais imediatamente para não ficar desatualizado
@@ -223,8 +227,7 @@ func update_room_state(data: Dictionary) -> bool:
 	var new_status = current_room_data.get("status", "waiting")
 	
 	if old_status == "waiting" and new_status == "playing":
-		if OS.has_feature("web"):
-			JavaScriptBridge.eval("console.log('FirebaseManager: Emitting game_started')")
+		print("FirebaseManager: Emitting game_started")
 		emit_signal("game_started")
 		
 	return true
