@@ -149,6 +149,7 @@ func update_board_visual():
 func update_local_hand_visual(new_hand: Array):
 	# Limpar e reconstruir para garantir sincronia correta
 	for child in hand_container.get_children():
+		hand_container.remove_child(child)
 		child.queue_free()
 		
 	for card_data in new_hand:
@@ -824,20 +825,22 @@ func _should_show_nexus_button() -> bool:
 	if finished_players.has(my_player_name):
 		return false
 		
+	var room = FirebaseManager.current_room_data
+	var hands = room.get("player_hands", {})
+	var my_hand = hands.get(my_player_name, [])
+	var my_hand_size = my_hand.size()
+		
 	# Caso 1: É o meu turno e tenho exatamente 2 cartas (vou jogar a penúltima)
-	if current_turn_index == my_player_index and hand_container.get_child_count() == 2:
+	if current_turn_index == my_player_index and my_hand_size == 2:
 		return true
 		
 	# Caso 2: Tenho exatamente 1 carta na mão (já joguei e quero me salvar)
-	if hand_container.get_child_count() == 1:
-		var room = FirebaseManager.current_room_data
+	if my_hand_size == 1:
 		var nexus_safe = room.get("nexus_safe", {})
 		if not nexus_safe.get(my_player_name, false):
 			return true
 			
 	# Caso 3: Algum oponente está com 1 carta na mão e não está seguro (podemos punir)
-	var room = FirebaseManager.current_room_data
-	var hands = room.get("player_hands", {})
 	var nexus_safe = room.get("nexus_safe", {})
 	for player in player_names:
 		if player != my_player_name and not finished_players.has(player):
